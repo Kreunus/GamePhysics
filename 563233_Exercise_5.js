@@ -39,6 +39,7 @@ var pictureY = 500; //px
 var ThrowTimeL = 0.00, ThrowTimeR = 0.00;	// time when throw starts
 var ThrowingTimeL = 0.00, ThrowingTimeR = 0.00; // time of throw until touching ground
 var rightCollsionTime = 0.00, leftCollisionTime = 0.00;
+var rollingStartTime = 0.00;
 var t = 0.00;	// time in s
 var dt;	// deltatime by fps
 var fps;
@@ -92,15 +93,27 @@ var leftIsCompressing = false;
 var leftIsFlying = false;
 var rightIsFlying = false;
 
+var groundedLeft = false;
+var groundedRight = false;
+
 var collidedLeft = false;
 var collidedRight = false;
 
+var rollingOnLeft = false;
+var rollingOnRight = false;
 
 // End of declaration ------------------------------------------------------------------------------------------------------
 
 
 function setup()
 {
+	xR0 = +0.6 + lineWidth/2 * xOffset;
+	yR0 = lineHeight * yOffset;
+	xR = xR0;
+	yR = yR0;
+	
+
+	
 	leftCollider = [
 		createVector(-0.6 + lineWidth/2, 0),
 		createVector(-0.6 - lineWidth/2, lineHeight)
@@ -110,7 +123,6 @@ function setup()
 		createVector(+0.6 - lineWidth/2, 0),
 		createVector(+0.6 + lineWidth/2, lineHeight)
 	];
-	
 
 	canvas = createCanvas(pictureX, pictureY);
 	canvas.parent(canvasID);
@@ -192,6 +204,7 @@ function draw()
 
 	push();
 	translate(-0.6 *xM, triHeight *yM); // translate left
+	angleLoffset = atan2(triHeight, -(0.6 + lineWidth/2) - (-0.6)) - 180;
 	var distanceLeft = pow((mouseXk - (-0.6*xM + (-lineWidth/2)*xM)),2) + pow(mouseYk - (lineHeight*yM), 2);
 	if(!draggingRight && distanceLeft < pow(mouseTreshhold,2)/2 && !leftIsFlying|| draggingLeft) { //not same radius as drawn circle
 		strokeWeight(0)
@@ -201,14 +214,14 @@ function draw()
 		{
 			circle((-lineWidth/2)*xM, (triHeight*yM), hightligh);
 		}
-
+		
 		if(mouseIsPressed) 
 		{
 			draggingLeft = true;
 			releasedLeft = false;
 
 			// anglemode() https://p5js.org/reference/#/p5/angleMode
-			angleLoffset = atan2(triHeight, -(0.6 + lineWidth/2) - (-0.6)) - 180; //flip 180° right quadrants due to atan
+			 //flip 180° right quadrants due to atan
 			angleLeft = atan2(mouseYk - (triHeight * yM), mouseXk - (-0.6 * xM)) - 180; //flip 180° right quadrants due to atan
 			angleLeft -= angleLoffset;
 			angleLeft = clampLeft(angleLeft);
@@ -238,7 +251,7 @@ function draw()
 		leftIsCompressing = false;
 		leftIsFlying = true;
 
-		vxL = angVelocityLeft * Math.cos(angleLoffset) *0.67;
+		vxL = angVelocityLeft * Math.cos(angleLoffset) *0.5;
 		vyL = -angVelocityLeft * Math.sin(angleLoffset) *0.2;
 		ThrowTimeL = t;
 	}
@@ -264,6 +277,7 @@ function draw()
 		if (yL < (0 + ballradius))
 		{	
 			yL = 0 + ballradius;
+			groundedLeft = true;
 			//print("Ground trigger: " + yL.toFixed(1) + " <= " + yL0.toFixed(1));
 		}
 	}
@@ -285,6 +299,7 @@ function draw()
 	// 2.2.1 Right player ------------------------------------------------------------------------------------------
 	push();
 	translate(+0.6 *xM, triHeight *yM);
+	angleRoffset = atan2(triHeight, (0.6 + lineWidth/2) - (0.6));
 	var distanceRight = pow((mouseXk - (0.6*xM + (lineWidth/2)*xM)),2) + pow(mouseYk - (lineHeight*yM), 2);
 	if(!draggingLeft && distanceRight < pow(mouseTreshhold,2)/2 && !rightIsFlying|| draggingRight) { //not same radius as drawn circle
 		strokeWeight(0)
@@ -302,7 +317,6 @@ function draw()
 			releasedRight = false;
 
 			// anglemode() https://p5js.org/reference/#/p5/angleMode
-			angleRoffset = atan2(triHeight, (0.6 + lineWidth/2) - (0.6));
 			angleRight = atan2(mouseYk - (triHeight * yM), mouseXk - (0.6 * xM));
 			angleRight -= angleRoffset;
 			angleRight = clampRight(angleRight);
@@ -328,13 +342,13 @@ function draw()
 		rotate(angleRight);
 	}
 	
-	if (releasedRight && angleRight == 0 && rightIsCompressing)
+	if (releasedRight && angleRight == 0 && rightIsCompressing && (!rollingOnLeft || !rollingOnLeft))
 	{
 		rightIsCompressing = false;
 		rightIsFlying = true;
 
-		vxR = -angVelocityRight * Math.cos(angleRoffset) *0.67;
-		vyR = angVelocityRight * Math.sin(angleRoffset) *0.2;
+		vxR = -angVelocityRight * Math.cos(angleRoffset) *0.5;
+		vyR = angVelocityRight * Math.cos(angleRoffset) *0.8;
 		ThrowTimeR = t;
 	}
 
@@ -345,70 +359,90 @@ function draw()
 
 	// 2.2.2 Right Ball ----------------------------------------------------------------
 	translate(-0.6*xM, -triHeight*yM)	// move back to origin (xi0, yi0)
-	xR0 = +0.6 + lineWidth/2 * xOffset;
-	yR0 = lineHeight * yOffset;
-	xR = xR0;
-	yR = yR0;
-
 	ThrowingTimeR = (t - ThrowTimeR) * 0.25;
 
-	if(rightIsFlying) {
+	if(rightIsFlying && (!rollingOnLeft || !rollingOnLeft)) {
 		xR = (xR0 + vxR*ThrowingTimeR);
 		yR = (-gF*ThrowingTimeR*ThrowingTimeR/2 + vyR*ThrowingTimeR + yR0);
 	
 		if (yR < (0 + ballradius))
 		{	
 			yR = 0 + ballradius;
+			groundedRight = true;
 			//print("Ground trigger: " + yR.toFixed(1) + " <= " + yR0.toFixed(1));
 		}
 	}
 	
 	// 2.2.3 Right Ball Collision -------------------------------------------------------
 
-	if (xR < 0 && rightIsFlying) { //COLLISION with left seesaw
-		if(xR <= leftCollider[0].x && xR >= leftCollider[1].x && yR <= leftCollider[1].y) {
+	if (xR < 0 && groundedRight) { //COLLISION with left seesaw
+		if(xR <= leftCollider[0].x && xR >= leftCollider[1].x && yR <= leftCollider[1].y && !rollingOnLeft) {
 			if(!collidedLeft) leftCollisioning();
 			print("COLLISION left");
 			
 			let tPlane = (t - leftCollisionTime) *0.25;
-			translate(-0.6*xM, +triHeight*yM);
-			rotate(-angleRoffset);
-			translate(+0.6*xM, -triHeight*yM);
-			yR += 3*ballradius; 			 	// <---------------- @Naumburger  Why it works with exactly this value?
+			translate((-0.6 + lineWidth/2)*xM, 0);
+			rotate(angleLoffset);
+			translate((+0.6 - lineWidth/2)*xM, 0); // hillPointRight
+			yR = ballradius;
 
 			// With position of xR (right ball) at left seesaw
-			
-			dF = gF * sin(angleRoffset);
+			dF = gF * sin(-angleLoffset);
 			sL = sL0 + vDL * tPlane + dF * (tPlane*tPlane)/2;
-			print("dF: " + dF + ", vDL: " + vDL + ", sL: " + sL);
+			//print("dF: " + dF + ", vDL: " + vDL + ", sL: " + sL);
 			xR = sL;
-		
 		}
 
-		if(collidedLeft && xR <= leftCollider[1].x && xR > leftCollider[1].x -0.025/*Treshhold to trigger only once*/) { 
+		if(xR >= leftCollider[0].x && collidedLeft) {
 			print("COLLISION left over");
+			rollingStartTime = t;
 			collidedLeft = false;
-			//collision over
+			rollingOnLeft = true;
+			rotate(-angleLoffset);	
+
+			vxR = -vDL;
 		}
 	}
 
-	if (xR > 0 && rightIsFlying) { //COLLISION with right seesaw
-		if(xR >= rightCollider[0].x && xR <= rightCollider[1].x && yR <= rightCollider[1].y) {
-			print("COLLISION right");
-					
-
-			//TODO calculation stuff
+	if (xR > 0 && groundedRight) { //COLLISION with right seesaw
+		if(xR >= rightCollider[0].x && xR <= rightCollider[1].x && yR <= rightCollider[1].y && !rollingOnRight) {
 			if(!collidedRight) rightCollisioning();
-				
+			print("COLLISION right");
+								
+			let tPlane = (t - rightCollisionTime) *0.25;
+			translate((+0.6 - lineWidth/2)*xM, 0);
+			rotate(angleRoffset);
+			translate((-0.6 + lineWidth/2)*xM, 0); // hillPointRight
+			yR = ballradius;
+
+			// With position of xR (right ball) at left seesaw
+			dF = gF * sin(angleRoffset);
+			sR = sR0 + vDR * tPlane + dF * (tPlane*tPlane)/2;
+			print("dF: " + dF + ", vDR: " + vDR + ", sR: " + sR);
+			xR = sR;	
 		}
 
-		if(xR >= rightCollider[1].x && xR > rightCollider[1].x +0.025/*Threshold to trigger only once*/) {
+		if(xR <= rightCollider[0].x && collidedRight) {
 			print("COLLISION right over");
+			rollingStartTime = t;
 			collidedRight = false;
-			//collision over
+			rollingOnRight = true;
+			rotate(-angleRoffset);	
+
+			vxR = -vDL;
 		}
+	}
+
+	if(rollingOnLeft) {
+		var rollingTime = (t - rollingStartTime) *0.25;
+		xR = (leftCollider[0].x + vxR*rollingTime);;
 	} 
 
+	if(rollingOnRight) {
+		var rollingTime = (t - rollingStartTime) *0.25;
+		xR = (rightCollider[0].x + vxR*rollingTime);
+	} 
+	
 	// Draw right ball
 	fill('#008800');
 	stroke('#008800');
@@ -450,18 +484,21 @@ function clampRight(angle)
     return angle;
 }
 
+
  function leftCollisioning() {
+	rightIsFlying = false;
 	collidedLeft = true;
-	
-	leftCollsionTime = t;
-	sL0 = -0.6 + lineWidth/2;
+
+	leftCollisionTime = t;
+	sL0 = xR;
 	vDL = vxR;
  }
 
  function rightCollisioning() {
+	rightIsFlying = false;
 	collidedRight = true;
-	
-	rightCollsionTime = t;
-	sR0 = 0.6 + lineWidth/2;
-	vDL = vxL;
+
+	rightCollisionTime = t;
+	sR0 = xR;
+	vDR = vxR;
  }
