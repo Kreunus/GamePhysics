@@ -18,14 +18,12 @@ var mouseTreshhold;
 var buttonPressed = false;
 var mouseClicked = false;
 
-
 // cartesian and origin
 var xi0, yi0;					// current origin in px
 var xL, yL, xR, yR;				// current coordninates of balls
 var xL0, yL0, xR0, yR0;			// Startpositions of the balls
 var xOffset = 0.825;			// xOffset for starting position
 var yOffset = 1.2;				// yOffset for starting position
-
 
 // Scaling
 var M, xM, yM;
@@ -34,28 +32,36 @@ var realY = 1; //m
 var pictureX = 1000; //px
 var pictureY = 500; //px
 
-
-// Time
-var ThrowTimeL = 0.00, ThrowTimeR = 0.00;	// time when throw starts
-var ThrowingTimeL = 0.00, ThrowingTimeR = 0.00; // time of throw until touching ground
-var rightCollsionTime = 0.00, leftCollisionTime = 0.00;
-var rollingStartTime = 0.00;
-var timeFactor = 0.25 // multiplacator for all times
-var t = 0.00;	// time in s
-var dt;	// deltatime by fps
-var fps;
-
-
 // Triagles
 var triSide = 0.05;
 var triHeight = (Math.sqrt(3)/2) * triSide;
-
 
 // Line Position 
 var lineLength = 0.25;
 var lineHeight = 2*triHeight;
 var lineWidth = Math.sqrt(lineLength*lineLength - lineHeight*lineHeight);
 
+// Time
+var timeFactor = 0.25 // multiplacator for all times
+var t = 0.00;	// time in s
+var dt;	// deltatime by fps
+var fps;
+
+// time when throw starts
+var l_ThrowTimeL = 0.00, l_ThrowTimeR = 0.00;
+var r_ThrowTimeL = 0.00, r_ThrowTimeR = 0.00;
+
+// time of throw until touching ground
+var l_ThrowingTimeL = 0.00, l_ThrowingTimeR = 0.00; 
+var r_ThrowingTimeL = 0.00, r_ThrowingTimeR = 0.00; 
+
+// time of collision with a seesaw
+var l_rightCollsionTime = 0.00, l_leftCollisionTime = 0.00;
+var r_rightCollsionTime = 0.00, r_leftCollisionTime = 0.00;
+
+// time when rolling started on a seesaw
+var l_rollingStartTime = 0.00;
+var r_rollingStartTime = 0.00;
 
 // Movement
 var gF = 9.81; // gravitation force
@@ -94,19 +100,23 @@ var releasedRight = true;
 var rightIsCompressing = false;
 var leftIsCompressing = false;
 
-// ------
-
 var leftIsFlying = false;
 var rightIsFlying = false;
 
-var groundedLeft = false;
-var groundedRight = false;
+var l_groundedLeft = false;
+var l_groundedRight = false;
+var r_groundedLeft = false;
+var r_groundedRight = false;
 
-var collidedLeft = false;
-var collidedRight = false;
+var l_collidedLeft = false;
+var l_collidedRight = false;
+var r_collidedLeft = false;
+var r_collidedRight = false;
 
-var rollingFromLeft = false;
-var rollingFromRight = false;
+var l_rollingFromLeft = false;
+var l_rollingFromRight = false;
+var r_rollingFromLeft = false;
+var r_rollingFromRight = false;
 
 
 // End of declaration ------------------------------------------------------------------------------------------------------
@@ -118,6 +128,11 @@ function setup()
 	yR0 = lineHeight * yOffset;
 	xR = xR0;
 	yR = yR0;
+
+	xL0 = -0.6 - lineWidth/2 * xOffset;
+	yL0 = lineHeight * yOffset;
+	xL = xL0;
+	yL = yL0;
 	
 	leftCollider = [
 		createVector(-0.6 + lineWidth/2, 0),
@@ -258,7 +273,7 @@ function draw()
 
 		vxL = -angVelocityLeft * Math.sin(angleLoffset) *0.5;
 		vyL =  angVelocityLeft * Math.cos(angleLoffset) *6;
-		ThrowTimeL = t;
+		r_ThrowTimeL = t;
 	}
 
 	fill('#ffffff');
@@ -268,34 +283,21 @@ function draw()
 
 	// 2.1.2 Left Ball -----------------------------------------------------------------------------------------------
 	translate(+0.6*xM, -triHeight*yM)	// move back to origing (xi0, yi0)
-	xL0 = -0.6 - lineWidth/2 * xOffset;
-	yL0 = lineHeight * yOffset;
-	xL = xL0;
-	yL = yL0;
-
-	ThrowingTimeL = (t - ThrowTimeL) * timeFactor;
+	r_ThrowingTimeL = (t - r_ThrowTimeL) * timeFactor;
 
 	if(leftIsFlying) {
-		xL = (xL0 + vxL*ThrowingTimeL);
-		yL = (-gF*ThrowingTimeL*ThrowingTimeL/2 + vyL*ThrowingTimeL + yL0);
+		xL = (xL0 + vxL*r_ThrowingTimeL);
+		yL = (-gF*r_ThrowingTimeL*r_ThrowingTimeL/2 + vyL*r_ThrowingTimeL + yL0);
 	
 		if (yL < (0 + ballradius))
 		{	
 			yL = 0 + ballradius;
-			groundedLeft = true;
+			r_groundedLeft = true;
 			//print("Ground trigger: " + yL.toFixed(1) + " <= " + yL0.toFixed(1));
 		}
 	}
-
-	// Draw left ball
-	fill('#008800');
-	stroke('#008800');
-	strokeWeight(1);
- 	circle(xL*xM, yL*yM, 2*ballradius*M);
+	 
 	pop(); 
-
-
-	// 2.1.3 Collision with left line ----------------------------------------------------
 
 
 	// End of 2.1 - Left Player ------------------------------------------------------------------------------------
@@ -355,15 +357,14 @@ function draw()
 		rotate(angleRight);
 	}
 	
-	if (releasedRight && angleRight == 0 && rightIsCompressing && (!rollingFromLeft || !rollingFromLeft))
+	if (releasedRight && angleRight == 0 && rightIsCompressing && (!r_rollingFromLeft || !r_rollingFromLeft))
 	{
 		rightIsCompressing = false;
 		rightIsFlying = true;
 
-		// @Naumburger... ?
 		vxR = -angVelocityRight * Math.sin(angleRoffset) *0.5;
 		vyR = angVelocityRight * Math.cos(angleRoffset) *6;
-		ThrowTimeR = t;
+		r_ThrowTimeR = t;
 	}
 
 	// right catapult
@@ -373,120 +374,220 @@ function draw()
 
 	// 2.2.2 Right Ball ----------------------------------------------------------------
 	translate(-0.6*xM, -triHeight*yM)	// move back to origin (xi0, yi0)
-	ThrowingTimeR = (t - ThrowTimeR) * timeFactor;
+	r_ThrowingTimeR = (t - r_ThrowTimeR) * timeFactor;
 
-	if(rightIsFlying && (!rollingFromLeft || !rollingFromLeft)) {
-		xR = (xR0 + vxR*ThrowingTimeR);
-		yR = (-gF*ThrowingTimeR*ThrowingTimeR/2 + vyR*ThrowingTimeR + yR0);
+	if(rightIsFlying && (!r_rollingFromLeft || !r_rollingFromLeft)) {
+		xR = (xR0 + vxR*r_ThrowingTimeR);
+		yR = (-gF*r_ThrowingTimeR*r_ThrowingTimeR/2 + vyR*r_ThrowingTimeR + yR0);
 	
 		if (yR < (0 + ballradius))
 		{	
 			yR = 0 + ballradius;
-			groundedRight = true;
+			r_groundedRight = true;
 			//print("Ground trigger: " + yR.toFixed(1) + " <= " + yR0.toFixed(1));
 		}
 	}
+	pop(); 
 	
-	// 2.2.3 Right Ball Collision -------------------------------------------------------
+	// End of right player area --------------------------------------------------
+	
+	// TODO ball interaction
 
-	if (xR < 0 && groundedRight) { //COLLISION with left seesaw
-		if(xR <= leftCollider[0].x && xR >= leftCollider[1].x && yR <= leftCollider[1].y && !rollingFromLeft) {
-			if(!collidedLeft) r_leftCollisioning();
+	// 2.1.3 Left Ball Collision -------------------------------------------------------
+
+	if (xL < 0 && l_groundedLeft) { //COLLISION with left seesaw
+		translate(0, 0);
+		if(xL <= leftCollider[0].x && xL >= leftCollider[1].x && yL <= leftCollider[1].y && !l_rollingFromLeft) {
+			if(!l_collidedLeft) l_leftCollisioning();
 			print("COLLISION left");
 			
-			let tPlane = (t - leftCollisionTime) * timeFactor;
+			let tPlane = (t - l_leftCollisionTime) * timeFactor;
+			translate((-0.6 + lineWidth/2)*xM, 0);
+			rotate(angleLoffset);
+			translate((+0.6 - lineWidth/2)*xM, 0); // hillPointRight
+			yL = ballradius;
+	
+			// With position of xR (right ball) at left seesaw
+			dF = gF * sin(-angleLoffset);
+			sL = sL0 + vDL * tPlane + dF * (tPlane*tPlane)/2;
+			//print("dF: " + dF + ", vDL: " + vDL + ", sL: " + sL);
+			xL = sL;
+		}
+	
+		if(xL >= leftCollider[0].x && l_collidedLeft) {
+			print("COLLISION left over");
+			l_rollingStartTime = t;
+			l_collidedLeft = false;
+			l_rollingFromLeft = true;
+			rotate(-angleLoffset);	
+	
+			vxL = -vDL;
+		}
+	
+		if(xL <= leftCollider[1].x && l_collidedLeft)
+		{
+			l_collidedLeft = false;
+			leftIsFlying = true;
+			rotate(-angleLoffset);
+			l_ThrowTimeL = t;
+	
+			xL0 = xL + ballradius;
+			yL0 = leftCollider[1].y + ballradius;
+	
+			vxL = -angVelocityRight * Math.sin(angleLoffset) *0.3;
+			vyL = angVelocityRight * Math.cos(angleLoffset);
+		}
+	}
+		
+	
+	if (xL > 0 && l_groundedLeft) { //COLLISION with right seesaw
+		if(xL >= rightCollider[0].x && xL <= rightCollider[1].x && yL <= rightCollider[1].y && !l_rollingFromRight) {
+			if(!l_collidedRight) l_rightCollisioning();
+			print("COLLISION right");
+									
+			let tPlane = (t - lightCollisionTime) * timeFactor;
+			translate((+0.6 - lineWidth/2)*xM, 0);
+			rotate(angleRoffset);
+			translate((-0.6 + lineWidth/2)*xM, 0); // hillPointRight
+			yL = ballradius;
+	
+			// With position of xL (right ball) at left seesaw
+			dF = gF * sin(-angleRoffset);
+			sL = sL0 + vDL * tPlane + dF * (tPlane*tPlane)/2;
+			//print("dF: " + dF + ", vDL: " + vDL + ", sL: " + sL);
+			xL = sL;	
+		}
+	
+		if(xL <= rightCollider[0].x && l_collidedRight) {
+			print("COLLISION right over");
+			l_rollingStartTime = t;
+			l_collidedRight = false;
+			l_rollingFromRight = true; 
+			rotate(-angleRoffset);	
+			vxL = -vDL;
+		}
+	
+		if(xL >= rightCollider[1].x && l_collidedRight)
+		{
+			l_collidedRight = false;
+			lefttIsFlying = true;
+			rotate(angleRoffset);
+			l_ThrowTimeL = t;
+	
+			xL0 = xL + ballradius;
+			yL0 = rightCollider[1].y + ballradius;
+				vxL = -angVelocityLeft * Math.sin(angleLoffset) *0.3;
+			vyL = angVelocityLeft * Math.cos(angleLoffset);
+			}
+		}
+	
+	if(l_rollingFromLeft) xL = rolling(l_rollingStartTime, leftCollider[0].x, xL, vxL);
+	if(l_rollingFromRight) xL = rolling(l_rollingStartTime, rightCollider[0].x, xL, vxL);
+	
+
+	// Draw left ball
+	fill('#008800');
+	stroke('#008800');
+	strokeWeight(1);
+	circle(xL*xM, yL*yM, 2*ballradius*M);
+
+
+	// 2.2.3 Right Ball Collision -------------------------------------------------------
+
+	if (xR < 0 && r_groundedRight) { //COLLISION with left seesaw
+		if(xR <= leftCollider[0].x && xR >= leftCollider[1].x && yR <= leftCollider[1].y && !r_rollingFromLeft) {
+			if(!r_collidedLeft) r_leftCollisioning();
+			print("COLLISION left");
+				
+			let tPlane = (t - r_leftCollisionTime) * timeFactor;
 			translate((-0.6 + lineWidth/2)*xM, 0);
 			rotate(angleLoffset);
 			translate((+0.6 - lineWidth/2)*xM, 0); // hillPointRight
 			yR = ballradius;
-
+	
 			// With position of xR (right ball) at left seesaw
 			dF = gF * sin(-angleLoffset);
 			sL = sL0 + vDL * tPlane + dF * (tPlane*tPlane)/2;
 			//print("dF: " + dF + ", vDL: " + vDL + ", sL: " + sL);
 			xR = sL;
 		}
-
-		if(xR >= leftCollider[0].x && collidedLeft) {
+	
+		if(xR >= leftCollider[0].x && r_collidedLeft) {
 			print("COLLISION left over");
-			rollingStartTime = t;
-			collidedLeft = false;
-			rollingFromLeft = true;
+			r_rollingStartTime = t;
+			r_collidedLeft = false;
+			r_rollingFromLeft = true;
 			rotate(-angleLoffset);	
-
+	
 			vxR = -vDL;
 		}
-
-		if(xR <= leftCollider[1].x && collidedLeft)
+	
+		if(xR <= leftCollider[1].x && r_collidedLeft)
 		{
-			collidedLeft = false;
+			r_collidedLeft = false;
 			rightIsFlying = true;
 			rotate(-angleLoffset);
-			ThrowTimeR = t;
-
+			r_ThrowTimeR = t;
+	
 			xR0 = xR + ballradius;
 			yR0 = leftCollider[1].y + ballradius;
-
+	
 			vxR = -angVelocityRight * Math.sin(angleRoffset) *0.3;
 			vyR = angVelocityRight * Math.cos(angleRoffset);
 		}
 	}
-
-	if (xR > 0 && groundedRight) { //COLLISION with right seesaw
-		if(xR >= rightCollider[0].x && xR <= rightCollider[1].x && yR <= rightCollider[1].y && !rollingFromRight) {
-			if(!collidedRight) r_rightCollisioning();
+	
+	if (xR > 0 && r_groundedRight) { //COLLISION with right seesaw
+		translate(0, 0);
+		if(xR >= rightCollider[0].x && xR <= rightCollider[1].x && yR <= rightCollider[1].y && !r_rollingFromRight) {
+			if(!r_collidedRight) r_rightCollisioning();
 			print("COLLISION right");
-								
+									
 			let tPlane = (t - rightCollisionTime) * timeFactor;
 			translate((+0.6 - lineWidth/2)*xM, 0);
 			rotate(angleRoffset);
 			translate((-0.6 + lineWidth/2)*xM, 0); // hillPointRight
 			yR = ballradius;
-
+	
 			// With position of xR (right ball) at left seesaw
 			dF = gF * sin(-angleRoffset);
 			sR = sR0 + vDR * tPlane + dF * (tPlane*tPlane)/2;
 			//print("dF: " + dF + ", vDR: " + vDR + ", sR: " + sR);
 			xR = sR;	
 		}
-
-		if(xR <= rightCollider[0].x && collidedRight) {
+	
+		if(xR <= rightCollider[0].x && r_collidedRight) {
 			print("COLLISION right over");
-			rollingStartTime = t;
-			collidedRight = false;
-			rollingFromRight = true; 
+			r_rollingStartTime = t;
+			r_collidedRight = false;
+			r_rollingFromRight = true; 
 			rotate(-angleRoffset);	
 			vxR = -vDR;
 		}
 
-		if(xR >= rightCollider[1].x && collidedRight)
+			if(xR >= rightCollider[1].x && r_collidedRight)
 		{
-			collidedRight = false;
+			r_collidedRight = false;
 			rightIsFlying = true;
 			rotate(angleRoffset);
-			ThrowTimeR = t;
-
+			r_ThrowTimeR = t;
+	
 			xR0 = xR + ballradius;
 			yR0 = rightCollider[1].y + ballradius;
-
+	
 			vxR = -angVelocityRight * Math.sin(angleRoffset) *0.3;
 			vyR = angVelocityRight * Math.cos(angleRoffset);
 		}
 	}
-
-	if(rollingFromLeft) xR = rolling(rollingStartTime, leftCollider[0].x, xR, vxR);
-	if(rollingFromRight) xR = rolling(rollingStartTime, rightCollider[0].x, xR, vxR);
-
-
+	
+	if(r_rollingFromLeft) xR = rolling(r_rollingStartTime, leftCollider[0].x, xR, vxR);
+	if(r_rollingFromRight) xR = rolling(r_rollingStartTime, rightCollider[0].x, xR, vxR);
+	
 	// Draw right ball
 	fill('#008800');
 	stroke('#008800');
 	strokeWeight(1);
 	circle(xR*xM, yR*yM, 2*ballradius*M);
-	
-	pop(); // End of right player area --------------------------------------------------
-	
-	// TODO ball interaction
 
 	pop(); // End of l.0 - Scale and Metrics (l. 101)
 	t = t + dt;
@@ -500,8 +601,8 @@ function draw()
 	text("Time: " + t.toFixed(2) + " s", 40, 75);
 	text("Delta: " + dt.toFixed(3) + " s", 40, 95);
 	text("Loffset: " + angleLoffset.toFixed(2) + "\nRoffset: " + angleRoffset.toFixed(2), 400, 150);
-	text("Throwing Time: " + ThrowTimeL.toFixed(2) + "\nAgular-Left: " + angVelocityLeft.toFixed(2) + "\nvx: " + vxL.toFixed(2) + " / vy: " + vyL.toFixed(2), 40, 150);
-	text("Throwing Time : " + ThrowTimeR.toFixed(2) +"\nAgular-Right: " + angVelocityRight.toFixed(2) + "\nvx: " + vxR.toFixed(2) + " / vy: " + vyR.toFixed(2), 40, 250);
+	text("Throwing Time: " + r_ThrowTimeL.toFixed(2) + "\nAgular-Left: " + angVelocityLeft.toFixed(2) + "\nvx: " + vxL.toFixed(2) + " / vy: " + vyL.toFixed(2), 40, 150);
+	text("Throwing Time : " + r_ThrowTimeR.toFixed(2) +"\nAgular-Right: " + angVelocityRight.toFixed(2) + "\nvx: " + vxR.toFixed(2) + " / vy: " + vyR.toFixed(2), 40, 250);
 }
 
 function clampLeft(angle) 
@@ -529,19 +630,19 @@ function clampRight(angle)
  }
 
  function r_leftCollisioning() {
-	rollingFromRight = false;
+	r_rollingFromRight = false;
 	rightIsFlying = false;
-	collidedLeft = true;
+	r_collidedLeft = true;
 
-	leftCollisionTime = t;
+	r_leftCollisionTime = t;
 	sL0 = xR;
 	vDL = vxR;
  }
 
  function r_rightCollisioning() {
-	rollingFromLeft = false;
+	r_rollingFromLeft = false;
 	rightIsFlying = false;
-	collidedRight = true;
+	r_collidedRight = true;
 
 	rightCollisionTime = t;
 	sR0 = xR;
@@ -549,19 +650,19 @@ function clampRight(angle)
  }
 
  function l_leftCollisioning() {
-	rollingFromRight = false;
+	l_rollingFromRight = false;
 	leftIsFlying = false;
-	collidedLeft = true;
+	l_collidedLeft = true;
 
-	leftCollisionTime = t;
+	r_leftCollisionTime = t;
 	sL0 = xL;
 	vDL = vxL;
  }
 
  function l_rightCollisioning() {
-	rollingFromLeft = false;
+	lr_rollingFromLeft = false;
 	leftIsFlying = false;
-	collidedRight = true;
+	l_collidedRight = true;
 
 	rightCollisionTime = t;
 	sL0 = xL;
