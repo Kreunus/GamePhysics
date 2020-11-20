@@ -1,10 +1,8 @@
 /**************************************************/
-/* Author:  Dr. Volkmar Naumburger                */
-/* Subauthor: Sebastian Pütz                      */   
+/* Author: Sebastian Pütz                 	      */   
 /*                                                */
 /* p5.js Template                                 */
-/* Date: 10.10.2020                               */
-/* Update: 17.10.2020                             */
+/* Date: 17.10.2020                        		  */
 /*                                                */
 /**************************************************/
 
