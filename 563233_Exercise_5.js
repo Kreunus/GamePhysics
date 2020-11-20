@@ -40,6 +40,7 @@ var ThrowTimeL = 0.00, ThrowTimeR = 0.00;	// time when throw starts
 var ThrowingTimeL = 0.00, ThrowingTimeR = 0.00; // time of throw until touching ground
 var rightCollsionTime = 0.00, leftCollisionTime = 0.00;
 var rollingStartTime = 0.00;
+var timeFactor = 0.25 // multiplacator for all times
 var t = 0.00;	// time in s
 var dt;	// deltatime by fps
 var fps;
@@ -77,18 +78,23 @@ var throwAngleRight = 0.0;
 var leftCollider, rightCollder; // colliders of seesaws
 var sL = 0.00, sR = 0.00;
 var sL0 = 0.00, sR0 = 0.00; 
-var vDL = 0.00, vdR = 0.00;
+var vDL = 0.00, vDR = 0.00;
 
 
 // Status
 var draggingLeft;
 var draggingRight;
 
+var mouseWasPressed = false;
+var mouseWasReleased = false;
+
 var releasedLeft = true;
 var releasedRight = true;
 
 var rightIsCompressing = false;
 var leftIsCompressing = false;
+
+// ------
 
 var leftIsFlying = false;
 var rightIsFlying = false;
@@ -99,8 +105,9 @@ var groundedRight = false;
 var collidedLeft = false;
 var collidedRight = false;
 
-var rollingOnLeft = false;
-var rollingOnRight = false;
+var rollingFromLeft = false;
+var rollingFromRight = false;
+
 
 // End of declaration ------------------------------------------------------------------------------------------------------
 
@@ -111,8 +118,6 @@ function setup()
 	yR0 = lineHeight * yOffset;
 	xR = xR0;
 	yR = yR0;
-	
-
 	
 	leftCollider = [
 		createVector(-0.6 + lineWidth/2, 0),
@@ -229,7 +234,7 @@ function draw()
 			circle((- (lineWidth/2)*xM), (triHeight*yM), hightligh);
 		}
 
-		else
+		else if (mouseWasReleased)
 		{
 			draggingLeft = false;
 			releasedLeft = true;
@@ -240,7 +245,7 @@ function draw()
 
 	if (releasedLeft && angleLeft > 0 && leftIsCompressing) 
 	{
-		angVelocityLeft = throwAngleLeft * 0.5; //adjust the catapult here
+		angVelocityLeft = throwAngleLeft * 0.1; //adjust the catapult here
 		angleLeft -= angVelocityLeft;
 		angleLeft = clampLeft(angleLeft);
 		rotate(angleLeft);
@@ -251,8 +256,8 @@ function draw()
 		leftIsCompressing = false;
 		leftIsFlying = true;
 
-		vxL = angVelocityLeft * Math.cos(angleLoffset) *0.5;
-		vyL = -angVelocityLeft * Math.sin(angleLoffset) *0.2;
+		vxL = -angVelocityLeft * Math.sin(angleLoffset) *0.5;
+		vyL =  angVelocityLeft * Math.cos(angleLoffset) *6;
 		ThrowTimeL = t;
 	}
 
@@ -268,7 +273,7 @@ function draw()
 	xL = xL0;
 	yL = yL0;
 
-	ThrowingTimeL = (t - ThrowTimeL) * 0.25;
+	ThrowingTimeL = (t - ThrowTimeL) * timeFactor;
 
 	if(leftIsFlying) {
 		xL = (xL0 + vxL*ThrowingTimeL);
@@ -312,7 +317,7 @@ function draw()
 		console.log("Right Pull area");
 
 		if(mouseIsPressed) 
-		{
+		{		
 			draggingRight = true;
 			releasedRight = false;
 
@@ -324,31 +329,40 @@ function draw()
 			circle((lineWidth/2)*xM, (triHeight*yM), hightligh);
 		}
 
-		else
+		else if (mouseWasReleased)
 		{
-			draggingRight = false;
-			releasedRight = true;
-			rightIsCompressing = true;
-			throwAngleRight = Math.abs(angleRight);
-			print("throw: " + throwAngleRight + "°");
+			if(!draggingRight)
+			{
+				mouseWasReleased = false;
+			}
+			
+			else
+			{
+				draggingRight = false;
+				releasedRight = true;
+				rightIsCompressing = true;
+				throwAngleRight = Math.abs(angleRight);
+				print("throw: " + throwAngleRight + "°");
+			}
 		}
 	}
 
 	if (releasedRight && angleRight < 0 && rightIsCompressing) 
 	{
-		angVelocityRight = throwAngleRight * 0.5; //adjust the catapult here
+		angVelocityRight = throwAngleRight * 0.1; //adjust the catapult here
 		angleRight += angVelocityRight;
 		angleRight = clampRight(angleRight);
 		rotate(angleRight);
 	}
 	
-	if (releasedRight && angleRight == 0 && rightIsCompressing && (!rollingOnLeft || !rollingOnLeft))
+	if (releasedRight && angleRight == 0 && rightIsCompressing && (!rollingFromLeft || !rollingFromLeft))
 	{
 		rightIsCompressing = false;
 		rightIsFlying = true;
 
-		vxR = -angVelocityRight * Math.cos(angleRoffset) *0.5;
-		vyR = angVelocityRight * Math.cos(angleRoffset) *0.8;
+		// @Naumburger... ?
+		vxR = -angVelocityRight * Math.sin(angleRoffset) *0.5;
+		vyR = angVelocityRight * Math.cos(angleRoffset) *6;
 		ThrowTimeR = t;
 	}
 
@@ -359,9 +373,9 @@ function draw()
 
 	// 2.2.2 Right Ball ----------------------------------------------------------------
 	translate(-0.6*xM, -triHeight*yM)	// move back to origin (xi0, yi0)
-	ThrowingTimeR = (t - ThrowTimeR) * 0.25;
+	ThrowingTimeR = (t - ThrowTimeR) * timeFactor;
 
-	if(rightIsFlying && (!rollingOnLeft || !rollingOnLeft)) {
+	if(rightIsFlying && (!rollingFromLeft || !rollingFromLeft)) {
 		xR = (xR0 + vxR*ThrowingTimeR);
 		yR = (-gF*ThrowingTimeR*ThrowingTimeR/2 + vyR*ThrowingTimeR + yR0);
 	
@@ -376,11 +390,11 @@ function draw()
 	// 2.2.3 Right Ball Collision -------------------------------------------------------
 
 	if (xR < 0 && groundedRight) { //COLLISION with left seesaw
-		if(xR <= leftCollider[0].x && xR >= leftCollider[1].x && yR <= leftCollider[1].y && !rollingOnLeft) {
-			if(!collidedLeft) leftCollisioning();
+		if(xR <= leftCollider[0].x && xR >= leftCollider[1].x && yR <= leftCollider[1].y && !rollingFromLeft) {
+			if(!collidedLeft) r_leftCollisioning();
 			print("COLLISION left");
 			
-			let tPlane = (t - leftCollisionTime) *0.25;
+			let tPlane = (t - leftCollisionTime) * timeFactor;
 			translate((-0.6 + lineWidth/2)*xM, 0);
 			rotate(angleLoffset);
 			translate((+0.6 - lineWidth/2)*xM, 0); // hillPointRight
@@ -397,28 +411,42 @@ function draw()
 			print("COLLISION left over");
 			rollingStartTime = t;
 			collidedLeft = false;
-			rollingOnLeft = true;
+			rollingFromLeft = true;
 			rotate(-angleLoffset);	
 
 			vxR = -vDL;
 		}
+
+		if(xR <= leftCollider[1].x && collidedLeft)
+		{
+			collidedLeft = false;
+			rightIsFlying = true;
+			rotate(-angleLoffset);
+			ThrowTimeR = t;
+
+			xR0 = xR + ballradius;
+			yR0 = leftCollider[1].y + ballradius;
+
+			vxR = -angVelocityRight * Math.sin(angleRoffset) *0.3;
+			vyR = angVelocityRight * Math.cos(angleRoffset);
+		}
 	}
 
 	if (xR > 0 && groundedRight) { //COLLISION with right seesaw
-		if(xR >= rightCollider[0].x && xR <= rightCollider[1].x && yR <= rightCollider[1].y && !rollingOnRight) {
-			if(!collidedRight) rightCollisioning();
+		if(xR >= rightCollider[0].x && xR <= rightCollider[1].x && yR <= rightCollider[1].y && !rollingFromRight) {
+			if(!collidedRight) r_rightCollisioning();
 			print("COLLISION right");
 								
-			let tPlane = (t - rightCollisionTime) *0.25;
+			let tPlane = (t - rightCollisionTime) * timeFactor;
 			translate((+0.6 - lineWidth/2)*xM, 0);
 			rotate(angleRoffset);
 			translate((-0.6 + lineWidth/2)*xM, 0); // hillPointRight
 			yR = ballradius;
 
 			// With position of xR (right ball) at left seesaw
-			dF = gF * sin(angleRoffset);
+			dF = gF * sin(-angleRoffset);
 			sR = sR0 + vDR * tPlane + dF * (tPlane*tPlane)/2;
-			print("dF: " + dF + ", vDR: " + vDR + ", sR: " + sR);
+			//print("dF: " + dF + ", vDR: " + vDR + ", sR: " + sR);
 			xR = sR;	
 		}
 
@@ -426,23 +454,30 @@ function draw()
 			print("COLLISION right over");
 			rollingStartTime = t;
 			collidedRight = false;
-			rollingOnRight = true;
+			rollingFromRight = true; 
 			rotate(-angleRoffset);	
+			vxR = -vDR;
+		}
 
-			vxR = -vDL;
+		if(xR >= rightCollider[1].x && collidedRight)
+		{
+			collidedRight = false;
+			rightIsFlying = true;
+			rotate(angleRoffset);
+			ThrowTimeR = t;
+
+			xR0 = xR + ballradius;
+			yR0 = rightCollider[1].y + ballradius;
+
+			vxR = -angVelocityRight * Math.sin(angleRoffset) *0.3;
+			vyR = angVelocityRight * Math.cos(angleRoffset);
 		}
 	}
 
-	if(rollingOnLeft) {
-		var rollingTime = (t - rollingStartTime) *0.25;
-		xR = (leftCollider[0].x + vxR*rollingTime);;
-	} 
+	if(rollingFromLeft) xR = rolling(rollingStartTime, leftCollider[0].x, xR, vxR);
+	if(rollingFromRight) xR = rolling(rollingStartTime, rightCollider[0].x, xR, vxR);
 
-	if(rollingOnRight) {
-		var rollingTime = (t - rollingStartTime) *0.25;
-		xR = (rightCollider[0].x + vxR*rollingTime);
-	} 
-	
+
 	// Draw right ball
 	fill('#008800');
 	stroke('#008800');
@@ -484,8 +519,17 @@ function clampRight(angle)
     return angle;
 }
 
+ function mouseReleased() {
+	mouseWasReleased = true;
+ }
 
- function leftCollisioning() {
+ function mousePressed() {
+	mouseWasPressed = true;
+	mouseWasReleased = false;
+ }
+
+ function r_leftCollisioning() {
+	rollingFromRight = false;
 	rightIsFlying = false;
 	collidedLeft = true;
 
@@ -494,7 +538,8 @@ function clampRight(angle)
 	vDL = vxR;
  }
 
- function rightCollisioning() {
+ function r_rightCollisioning() {
+	rollingFromLeft = false;
 	rightIsFlying = false;
 	collidedRight = true;
 
@@ -502,3 +547,29 @@ function clampRight(angle)
 	sR0 = xR;
 	vDR = vxR;
  }
+
+ function l_leftCollisioning() {
+	rollingFromRight = false;
+	leftIsFlying = false;
+	collidedLeft = true;
+
+	leftCollisionTime = t;
+	sL0 = xL;
+	vDL = vxL;
+ }
+
+ function l_rightCollisioning() {
+	rollingFromLeft = false;
+	leftIsFlying = false;
+	collidedRight = true;
+
+	rightCollisionTime = t;
+	sL0 = xL;
+	vDL = vxL;
+ }
+
+ function rolling(startTime, collider, x, v) {
+	let rollingTime = (t - startTime) * timeFactor
+	x = collider + v*rollingTime;
+	return x;
+}
