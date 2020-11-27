@@ -46,8 +46,8 @@ var dt;	// deltatime by fps
 var fps;
 
 // time when throw starts
-var l_ThrowTimeL = 0.00, l_ThrowTimeR = 0.00;
-var r_ThrowTimeL = 0.00, r_ThrowTimeR = 0.00;
+var l_ThrowTime = 0.00, l_ThrowTimeR = 0.00;
+var r_ThrowTimeL = 0.00, r_ThrowTime = 0.00;
 
 // time of throw until touching ground
 var l_ThrowingTimeL = 0.00, l_ThrowingTimeR = 0.00; 
@@ -275,14 +275,14 @@ function draw()
 		rotate(angleLeft);
 	}
 
-	if (releasedLeft && angleLeft == 0 && leftIsCompressing && (!l_rollingFromLeft || !l_rollingFromLeft))
+	if (releasedLeft && angleLeft == 0 && leftIsCompressing && (!l_rollingFromLeft || !l_rollingFromRight))
 	{
 		leftIsCompressing = false;
 		leftIsFlying = true;
 
 		vxL = -angVelocityLeft * Math.sin(angleLoffset) *0.5;
 		vyL =  angVelocityLeft * Math.cos(angleLoffset) *6;
-		l_ThrowTimeL = t;
+		l_ThrowTime = t;
 	}
 
 	// left catapult
@@ -293,9 +293,9 @@ function draw()
 
 	// 2.1.2 Left Ball -----------------------------------------------------------------------------------------------
 	translate(+0.6*xM, -triHeight*yM)	// move back to origing (xi0, yi0)
-	l_ThrowingTimeL = (t - l_ThrowTimeL) * timeFactor;
+	l_ThrowingTimeL = (t - l_ThrowTime) * timeFactor;
 
-	if (leftIsFlying && (!l_rollingFromLeft || !l_rollingFromLeft)) {
+	if (leftIsFlying && (!l_rollingFromLeft || !l_rollingFromRight)) {
 		xL = (xL0 + vxL*l_ThrowingTimeL);
 		yL = (-gF*l_ThrowingTimeL*l_ThrowingTimeL/2 + vyL*l_ThrowingTimeL + yL0);
 	
@@ -340,7 +340,8 @@ function draw()
 		
 	if (xL > 0 && l_groundedLeft) 
 	{ //COLLISION with right seesaw
-		if (xL >= rightCollider[0].x && xL <= rightCollider[1].x && yL <= rightCollider[1].y && !l_rollingFromRight) {
+		if (xL >= rightCollider[0].x && xL <= rightCollider[1].x && yL <= rightCollider[1].y && !l_rollingFromRight) 
+		{
 			if(!l_collidedRight) l_rightCollisioning();
 			print("COLLISION right");
 										
@@ -362,7 +363,7 @@ function draw()
 			l_rollingStartTime = t;
 			l_collidedRight = false;
 			l_rollingFromRight = true; 
-			rotate(angleRoffset);	
+			rotate(-angleRoffset);	
 			vxL = -vDR; //left ball - right seesaw
 		}
 	
@@ -370,13 +371,13 @@ function draw()
 		{
 			l_collidedRight = false;
 			leftIsFlying = true;
-			rotate(angleRoffset);
-			l_ThrowTimeR = t;
+			rotate(-angleRoffset);
+			l_ThrowTime = t;
 		
 			xL0 = xL + ballradius;
 			yL0 = rightCollider[1].y + ballradius;
 		
-			vxL = angVelocityLeft * Math.sin(angleLoffset) *0.3;
+			vxL = angVelocityLeft * Math.sin(-angleLoffset) *0.3;
 			vyL = angVelocityLeft * Math.cos(angleLoffset);
 		}
 	}
@@ -451,14 +452,14 @@ function draw()
 		rotate(angleRight);
 	}
 	
-	if (releasedRight && angleRight == 0 && rightIsCompressing && (!r_rollingFromLeft || !r_rollingFromLeft))
+	if (releasedRight && angleRight == 0 && rightIsCompressing && (!r_rollingFromLeft || !r_rollingFromRight))
 	{
 		rightIsCompressing = false;
 		rightIsFlying = true;
 
 		vxR = -angVelocityRight * Math.sin(angleRoffset) *0.5;
 		vyR = angVelocityRight * Math.cos(angleRoffset) *6;
-		r_ThrowTimeR = t;
+		r_ThrowTime = t;
 	}
 
 	// right catapult
@@ -468,9 +469,9 @@ function draw()
 
 	// 2.2.2 Right Ball ----------------------------------------------------------------
 	translate(-0.6*xM, -triHeight*yM)	// move back to origin (xi0, yi0)
-	r_ThrowingTimeR = (t - r_ThrowTimeR) * timeFactor;
+	r_ThrowingTimeR = (t - r_ThrowTime) * timeFactor;
 
-	if(rightIsFlying && (!r_rollingFromLeft || !r_rollingFromLeft)) {
+	if(rightIsFlying && (!r_rollingFromLeft || !r_rollingFromRight)) {
 		xR = (xR0 + vxR*r_ThrowingTimeR);
 		yR = (-gF*r_ThrowingTimeR*r_ThrowingTimeR/2 + vyR*r_ThrowingTimeR + yR0);
 	
@@ -516,7 +517,7 @@ function draw()
 			r_collidedLeft = false;
 			rightIsFlying = true;
 			rotate(-angleLoffset);
-			r_ThrowTimeR = t;
+			r_ThrowTime = t;
 	
 			xR0 = xR + ballradius;
 			yR0 = leftCollider[1].y + ballradius;
@@ -528,7 +529,8 @@ function draw()
 	
 	if (xR > 0 && r_groundedRight) 
 	{ //COLLISION with right seesaw
-		if(xR >= rightCollider[0].x && xR <= rightCollider[1].x && yR <= rightCollider[1].y && !r_rollingFromRight) {
+		if(xR >= rightCollider[0].x && xR <= rightCollider[1].x && yR <= rightCollider[1].y && !r_rollingFromRight) 
+		{
 			if(!r_collidedRight) r_rightCollisioning();
 			print("COLLISION right");
 									
@@ -555,8 +557,15 @@ function draw()
 		}
 	}
 	
-	if(r_rollingFromLeft) xR = rolling(r_rollingStartTime, leftCollider[0].x, xR, vxR);
-	if(r_rollingFromRight) xR = rolling(r_rollingStartTime, rightCollider[0].x, xR, vxR);
+	if(r_rollingFromLeft) {
+		xR = rolling(r_rollingStartTime, leftCollider[0].x, xR, vxR);
+		r_rollingFromRight = false;
+	}
+	if(r_rollingFromRight) {
+		xR = rolling(r_rollingStartTime, rightCollider[0].x, xR, vxR);
+		l_rollingFromLeft = false;
+	}
+	
 	
 	// Draw right ball
 	fill('#008800');
@@ -577,7 +586,7 @@ function draw()
 	text("Time: " + t.toFixed(2) + " s", 40, 75);
 	text("Delta: " + dt.toFixed(3) + " s", 40, 95);
 	text("Throwing Time: " + r_ThrowTimeL.toFixed(2) + "\nAgular-Left: " + angVelocityLeft.toFixed(2) + "\nvx: " + vxL.toFixed(2) + " / vy: " + vyL.toFixed(2), 40, 150);
-	text("Throwing Time : " + r_ThrowTimeR.toFixed(2) +"\nAgular-Right: " + angVelocityRight.toFixed(2) + "\nvx: " + vxR.toFixed(2) + " / vy: " + vyR.toFixed(2), 40, 250);
+	text("Throwing Time : " + r_ThrowTime.toFixed(2) +"\nAgular-Right: " + angVelocityRight.toFixed(2) + "\nvx: " + vxR.toFixed(2) + " / vy: " + vyR.toFixed(2), 40, 250);
 	text("\nxL0: " + xL0.toFixed(2) +  " -- yL0: " + yL0.toFixed(2) + "\nxL: " + xL.toFixed(2) + " -- yL: " + yL.toFixed(2), 800, 150);
 	text("\nxR0: " + xR0.toFixed(2) +  " -- yR0: " + yR0.toFixed(2) + "\nxR: " + xR.toFixed(2) + " -- yR: " + yR.toFixed(2), 800, 250);
 }
