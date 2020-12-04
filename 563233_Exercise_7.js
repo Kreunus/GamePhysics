@@ -40,7 +40,6 @@ var lineHeight = 2*triHeight;
 var lineWidth = Math.sqrt(lineLength*lineLength - lineHeight*lineHeight);
 
 // Time
-var timeFactor = 1 // multiplacator for all times
 var t = 0.00;	// time in s
 var dt;	// deltatime by fps
 var fps;
@@ -48,10 +47,6 @@ var fps;
 // time when throw starts
 var l_ThrowTime = 0.00;
 var r_ThrowTime = 0.00;
-
-// time of throw until touching ground
-var l_ThrowingTimeL = 0.00, l_ThrowingTimeR = 0.00; 
-var r_ThrowingTimeL = 0.00, r_ThrowingTimeR = 0.00; 
 
 // time of collision with a seesaw
 var l_rightCollsionTime = 0.00, l_leftCollisionTime = 0.00;
@@ -84,6 +79,9 @@ var sL = 0.00, sR = 0.00;
 var sL0 = 0.00, sR0 = 0.00; 
 var vDL = 0.00, vDR = 0.00;
 
+// Drag
+var myR = 0.03;
+
 
 // Status
 var draggingLeft;
@@ -101,10 +99,8 @@ var leftIsCompressing = false;
 var leftIsFlying = false;
 var rightIsFlying = false;
 
-var l_groundedLeft = false;
-var l_groundedRight = false;
-var r_groundedLeft = false;
-var r_groundedRight = false;
+var l_grounded = false;
+var r_grounded = false;
 
 var l_collidedLeft = false;
 var l_collidedRight = false;
@@ -115,7 +111,6 @@ var l_rollingFromLeft = false;
 var l_rollingFromRight = false;
 var r_rollingFromLeft = false;
 var r_rollingFromRight = false;
-
 
 // End of declaration ------------------------------------------------------------------------------------------------------
 
@@ -219,7 +214,6 @@ function draw()
 
 
 	// 2.1.1 Left player area -------------------------------------------------------------------------------------
-
 	push();
 	translate(-0.6 *xM, triHeight *yM); // translate left
 	angleLoffset = atan2(triHeight, -(0.6 + lineWidth/2) - (-0.6)) - 180;
@@ -250,10 +244,7 @@ function draw()
 
 		else if (mouseWasReleased)
 		{
-			if (!draggingLeft)
-			{
-				mouseWasReleased = false;
-			}
+			if (!draggingLeft) mouseWasReleased = false;
 
 			else
 			{
@@ -302,14 +293,13 @@ function draw()
 		if (yL < (0 + ballradius))
 		{	
 			yL = 0 + ballradius;
-			l_groundedLeft = true;
+			l_grounded = true;
 			//print("Ground trigger: " + yL.toFixed(1) + " <= " + yL0.toFixed(1));
 		}
 	}
 
 	// 2.1.3 Left Ball Collision -------------------------------------------------------
-
-	if (xL < 0 && l_groundedLeft) { //COLLISION with left seesaw
+	if (xL < 0 && l_grounded) { //COLLISION with left seesaw
 		if (xL <= leftCollider[0].x && xL >= leftCollider[1].x && yL <= leftCollider[1].y && !l_rollingFromLeft) {
 			if(!l_collidedLeft) l_leftCollisioning();
 			print("COLLISION left");	
@@ -320,7 +310,7 @@ function draw()
 			yL = ballradius;
 		
 			dF = gF * sin(-angleLoffset);
-			vxL = vxL + dF * dt;
+			vxL = vxL + (gF * cos(-angleLoffset) * myR + dF) * dt; // friction
 			sL = sL + vxL * dt;
 			xL = sL;
 		}
@@ -335,7 +325,7 @@ function draw()
 		}
 	}
 		
-	if (xL > 0 && l_groundedLeft) 
+	if (xL > 0 && l_grounded) 
 	{ //COLLISION with right seesaw
 		if (xL >= rightCollider[0].x && xL <= rightCollider[1].x && yL <= rightCollider[1].y && !l_rollingFromRight) 
 		{
@@ -348,7 +338,7 @@ function draw()
 			yL = ballradius;
 			
 			dF = gF * sin(-angleRoffset);
-			vxL = vxL + dF * dt;
+			vxL = vxL + (gF * cos(-angleRoffset) * myR + dF) * dt;
 			sL = sL + vxL * dt;
 			xL = sL;
 		}
@@ -366,18 +356,19 @@ function draw()
 		{
 			l_collidedRight = false;
 			leftIsFlying = true;
+			l_grounded = false;
+
 			rotate(-angleRoffset);
 		
-			xL0 = xL - ballradius;
-			yL0 = rightCollider[1].y + ballradius;
-		
-			vxL = angVelocityLeft * Math.sin(-angleLoffset) *0.3;
+			xL = xL - ballradius;
+			yL = rightCollider[1].y + ballradius;
+
+			vxL = angVelocityLeft * Math.sin(-angleLoffset) *0.25;
 			vyL = angVelocityLeft * Math.cos(angleLoffset);
 		}
 	}
-		
-	if (l_rollingFromLeft) xL = rolling(xL, vxL);
-	if (l_rollingFromRight) xL = rolling(xL, vxL);
+	if (l_grounded || l_rollingFromLeft) leftRolling();
+	if (l_grounded || l_rollingFromRight) leftRolling();
 		
 	
 	// Draw left ball
@@ -391,7 +382,6 @@ function draw()
 
 
 	// 2.2.1 Right player ------------------------------------------------------------------------------------------
-
 	push();
 	translate(+0.6 *xM, triHeight *yM);
 	angleRoffset = atan2(triHeight, (0.6 + lineWidth/2) - (0.6));
@@ -422,11 +412,8 @@ function draw()
 
 		else if (mouseWasReleased)
 		{
-			if (!draggingRight)
-			{
-				mouseWasReleased = false;
-			}
-			
+			if (!draggingRight) mouseWasReleased = false;
+
 			else
 			{
 				draggingRight = false;
@@ -463,7 +450,6 @@ function draw()
 
 	// 2.2.2 Right Ball ----------------------------------------------------------------
 	translate(-0.6*xM, -triHeight*yM)	// move back to origin (xi0, yi0)
-	r_ThrowingTimeR = (t - r_ThrowTime) * timeFactor;
 
 	if(rightIsFlying && (!r_rollingFromLeft || !r_rollingFromRight)) {
 		xR = xR + vxR * dt;
@@ -473,12 +459,12 @@ function draw()
 		if (yR < (0 + ballradius))
 		{	
 			yR = 0 + ballradius;
-			r_groundedRight = true;
+			r_grounded = true;
 		}
 	}
 
 	// 2.2.3 Right Ball Collision -------------------------------------------------------
-	if (xR < 0 && r_groundedRight) { //COLLISION with left seesaw
+	if (xR < 0 && r_grounded) { //COLLISION with left seesaw
 		if(xR <= leftCollider[0].x && xR >= leftCollider[1].x && yR <= leftCollider[1].y && !r_rollingFromLeft) {
 			if(!r_collidedLeft) r_leftCollisioning();
 			print("COLLISION left");
@@ -489,7 +475,7 @@ function draw()
 			yR = ballradius;
 	
 			dF = gF * sin(-angleLoffset);
-			vxR = vxR + dF * dt;
+			vxR = vxR + (gF * cos(-angleLoffset) * myR + dF) * dt;
 			sR = sR + vxR * dt;
 			xR = sR;
 		}
@@ -508,17 +494,19 @@ function draw()
 		{
 			r_collidedLeft = false;
 			rightIsFlying = true;
+			r_grounded = false;
+
 			rotate(-angleLoffset);
 	
-			xR0 = xR + ballradius;
-			yR0 = leftCollider[1].y + ballradius;
-	
-			vxR = -angVelocityRight * Math.sin(angleRoffset) *0.3;
+			xR = xR + ballradius;
+			yR = leftCollider[1].y + ballradius;
+		
+			vxR = -angVelocityRight * Math.sin(angleRoffset) *0.25;
 			vyR = angVelocityRight * Math.cos(angleRoffset);
 		}
 	}
 	
-	if (xR > 0 && r_groundedRight) 
+	if (xR > 0 && r_grounded) 
 	{ //COLLISION with right seesaw
 		if(xR >= rightCollider[0].x && xR <= rightCollider[1].x && yR <= rightCollider[1].y && !r_rollingFromRight) 
 		{
@@ -531,7 +519,7 @@ function draw()
 			yR = ballradius;
 	
 			dF = gF * sin(-angleRoffset);
-			vxR = vxR + dF * dt;
+			vxR = vxR + (gF * cos(-angleRoffset) * myR + dF)* dt;
 			sR = sR + vxR * dt;
 			xR = sR;
 		}
@@ -546,9 +534,8 @@ function draw()
 			xR = rightCollider[0].x;
 		}
 	}
-	
-	if(r_rollingFromLeft) xR = rolling(xR, vxR);
-	if(r_rollingFromRight) xR = rolling(xR, vxR);
+	if(r_grounded || r_rollingFromLeft) rightRolling();	
+	if(r_grounded || r_rollingFromRight) rightRolling();
 
 	
 	// Draw right ball
@@ -558,7 +545,7 @@ function draw()
 	circle(xR*xM, yR*yM, 2*ballradius*M);
 
 	pop();
-	pop(); // End of l.0 - Scale and Metrics (l. 101)
+	pop(); // End of l.0 - Scale and Metrics (l. 183)
 	t = t + dt;
 
 	// Administration
@@ -627,7 +614,24 @@ function clampRight(angle)
 	sR = xR;
  }
 
- function rolling(x, v) {
-	x = x + v*dt;
-	return x;
+ function leftRolling() {
+	if(vxL > 0) vxL = vxL - myR * gF * dt;
+	else vxL = vxL + myR * gF * dt;
+
+	if(Math.abs(vxL) < 0.01) vxL = 0;
+	xL = xL + vxL * dt;	
+
+	leftIsFlying = false;
+	return vxL;
+}
+
+function rightRolling() {
+	if(vxR > 0) vxR = vxR - myR * gF * dt;
+	else vxR = vxR + myR * gF * dt;
+
+	if(Math.abs(vxR) < 0.01) vxR = 0;
+	xR = xR + vxR * dt;	
+
+	rightIsFlying = false;
+	return vxR;
 }
