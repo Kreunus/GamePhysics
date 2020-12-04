@@ -40,14 +40,14 @@ var lineHeight = 2*triHeight;
 var lineWidth = Math.sqrt(lineLength*lineLength - lineHeight*lineHeight);
 
 // Time
-var timeFactor = 0.25 // multiplacator for all times
+var timeFactor = 1 // multiplacator for all times
 var t = 0.00;	// time in s
 var dt;	// deltatime by fps
 var fps;
 
 // time when throw starts
-var l_ThrowTime = 0.00, l_ThrowTimeR = 0.00;
-var r_ThrowTimeL = 0.00, r_ThrowTime = 0.00;
+var l_ThrowTime = 0.00;
+var r_ThrowTime = 0.00;
 
 // time of throw until touching ground
 var l_ThrowingTimeL = 0.00, l_ThrowingTimeR = 0.00; 
@@ -79,7 +79,7 @@ var angleRoffset = 0.0;
 var throwAngleLeft = 0.0;
 var throwAngleRight = 0.0;
 
-var leftCollider, rightCollder; // colliders of seesaws
+var leftCollider, rightCollider; // colliders of seesaws
 var sL = 0.00, sR = 0.00;
 var sL0 = 0.00, sR0 = 0.00; 
 var vDL = 0.00, vDR = 0.00;
@@ -148,7 +148,7 @@ function setup()
 
 	fps = 60;
 	frameRate(fps);
-	dt = 1.0 / fps;
+	dt = 0.5 / fps;
 
 	// Scalce Calculation
 	xM = pictureX / realX;
@@ -191,11 +191,11 @@ function draw()
 
 	/*
 	* I wanted to refactor some code for distance calculation of mouse position and drag point not using xM or yM
-	* of scaling for multiplication. But somehow the transition of mouse form pixel into meters does not work. 
+	* of scaling for multiplication. But somehow the transition of mouse from pixel into meters does not work. 
 	* (watch l.164 & l.257)
 	*/
-	var mouseXk = mouseX - xi0;	// / xM	 <------- @Naumburger: Why does rescalingng does not work works with exactly this value?
-	var mouseYk = -mouseY + yi0; // / xY  <------- @Naumburger: Why does rescalingng does not work works with exactly this value?
+	var mouseXk = mouseX - xi0;	// / xM	 <------- @Naumburger: Why does rescalingng not work works with exactly this value?
+	var mouseYk = -mouseY + yi0; // / xY  <------- @Naumburger: Why does rescalingng not work works with exactly this value?
 
 	// 1.2 Static objects
 	fill('#1515ff');
@@ -293,11 +293,11 @@ function draw()
 
 	// 2.1.2 Left Ball -----------------------------------------------------------------------------------------------
 	translate(+0.6*xM, -triHeight*yM)	// move back to origing (xi0, yi0)
-	l_ThrowingTimeL = (t - l_ThrowTime) * timeFactor;
 
 	if (leftIsFlying && (!l_rollingFromLeft || !l_rollingFromRight)) {
-		xL = (xL0 + vxL*l_ThrowingTimeL);
-		yL = (-gF*l_ThrowingTimeL*l_ThrowingTimeL/2 + vyL*l_ThrowingTimeL + yL0);
+		xL = xL + vxL * dt;
+		vyL = vyL -gF * dt;
+		yL = yL + vyL *dt;
 	
 		if (yL < (0 + ballradius))
 		{	
@@ -312,29 +312,26 @@ function draw()
 	if (xL < 0 && l_groundedLeft) { //COLLISION with left seesaw
 		if (xL <= leftCollider[0].x && xL >= leftCollider[1].x && yL <= leftCollider[1].y && !l_rollingFromLeft) {
 			if(!l_collidedLeft) l_leftCollisioning();
-			print("COLLISION left");
-					
-			let tPlane = (t - l_leftCollisionTime) * timeFactor;
+			print("COLLISION left");	
+
 			translate((-0.6 + lineWidth/2)*xM, 0);
 			rotate(angleLoffset);
 			translate((+0.6 - lineWidth/2)*xM, 0);
 			yL = ballradius;
 		
-			// With position of xL (left ball) at left seesaw
 			dF = gF * sin(-angleLoffset);
-			sL = sL0 + vDL * tPlane + dF * (tPlane*tPlane)/2;
-			//print("dF: " + dF + ", vDL: " + vDL + ", sL: " + sL);
+			vxL = vxL + dF * dt;
+			sL = sL + vxL * dt;
 			xL = sL;
 		}
 		
 		if(xL >= leftCollider[0].x && l_collidedLeft) {
 			print("COLLISION left over");
-			l_rollingStartTime = t;
 			l_collidedLeft = false;
 			l_rollingFromLeft = true;
 			rotate(-angleLoffset);	
 		
-			vxL = -vDL;
+			xL = leftCollider[0].x;
 		}
 	}
 		
@@ -345,26 +342,24 @@ function draw()
 			if(!l_collidedRight) l_rightCollisioning();
 			print("COLLISION right");
 										
-			let tPlane = (t - l_rightCollisionTime) * timeFactor;
 			translate((+0.6 - lineWidth/2)*xM, 0);
 			rotate(angleRoffset);
 			translate((-0.6 + lineWidth/2)*xM, 0);
 			yL = ballradius;
-		
-			// With position of xL (left ball) at left seesaw
+			
 			dF = gF * sin(-angleRoffset);
-			sR = sR0 + vDR * tPlane + dF * (tPlane*tPlane)/2;
-			//print("dF: " + dF + ", vDR: " + vDR + ", sR: " + sR);
-			xL = sR; //left ball - right seesaw	
+			vxL = vxL + dF * dt;
+			sL = sL + vxL * dt;
+			xL = sL;
 		}
 		
 		if(xL <= rightCollider[0].x && l_collidedRight) {
 			print("COLLISION right over");
-			l_rollingStartTime = t;
 			l_collidedRight = false;
 			l_rollingFromRight = true; 
-			rotate(-angleRoffset);	
-			vxL = -vDR; //left ball - right seesaw
+			rotate(-angleRoffset);
+			
+			xL = rightCollider[0].x;
 		}
 	
 		if(xL >= rightCollider[1].x && l_collidedRight)
@@ -372,9 +367,8 @@ function draw()
 			l_collidedRight = false;
 			leftIsFlying = true;
 			rotate(-angleRoffset);
-			l_ThrowTime = t;
 		
-			xL0 = xL + ballradius;
+			xL0 = xL - ballradius;
 			yL0 = rightCollider[1].y + ballradius;
 		
 			vxL = angVelocityLeft * Math.sin(-angleLoffset) *0.3;
@@ -382,8 +376,8 @@ function draw()
 		}
 	}
 		
-	if (l_rollingFromLeft) xL = rolling(l_rollingStartTime, leftCollider[0].x, xL, vxL);
-	if (l_rollingFromRight) xL = rolling(l_rollingStartTime, rightCollider[0].x, xL, vxL);
+	if (l_rollingFromLeft) xL = rolling(xL, vxL);
+	if (l_rollingFromRight) xL = rolling(xL, vxL);
 		
 	
 	// Draw left ball
@@ -472,14 +466,14 @@ function draw()
 	r_ThrowingTimeR = (t - r_ThrowTime) * timeFactor;
 
 	if(rightIsFlying && (!r_rollingFromLeft || !r_rollingFromRight)) {
-		xR = (xR0 + vxR*r_ThrowingTimeR);
-		yR = (-gF*r_ThrowingTimeR*r_ThrowingTimeR/2 + vyR*r_ThrowingTimeR + yR0);
+		xR = xR + vxR * dt;
+		vyR = vyR -gF * dt;
+		yR = yR + vyR *dt;
 	
 		if (yR < (0 + ballradius))
 		{	
 			yR = 0 + ballradius;
 			r_groundedRight = true;
-			//print("Ground trigger: " + yR.toFixed(1) + " <= " + yR0.toFixed(1));
 		}
 	}
 
@@ -489,17 +483,15 @@ function draw()
 			if(!r_collidedLeft) r_leftCollisioning();
 			print("COLLISION left");
 				
-			let tPlane = (t - r_leftCollisionTime) * timeFactor;
 			translate((-0.6 + lineWidth/2)*xM, 0);
 			rotate(angleLoffset);
 			translate((+0.6 - lineWidth/2)*xM, 0); // hillPointRight
 			yR = ballradius;
 	
-			// With position of xR (right ball) at left seesaw
 			dF = gF * sin(-angleLoffset);
-			sL = sL0 + vDL * tPlane + dF * (tPlane*tPlane)/2;
-			//print("dF: " + dF + ", vDL: " + vDL + ", sL: " + sL);
-			xR = sL;
+			vxR = vxR + dF * dt;
+			sR = sR + vxR * dt;
+			xR = sR;
 		}
 	
 		if(xR >= leftCollider[0].x && r_collidedLeft) {
@@ -509,7 +501,7 @@ function draw()
 			r_rollingFromLeft = true;
 			rotate(-angleLoffset);	
 	
-			vxR = -vDL;
+			xR = leftCollider[0].x;
 		}
 	
 		if(xR <= leftCollider[1].x && r_collidedLeft)
@@ -517,7 +509,6 @@ function draw()
 			r_collidedLeft = false;
 			rightIsFlying = true;
 			rotate(-angleLoffset);
-			r_ThrowTime = t;
 	
 			xR0 = xR + ballradius;
 			yR0 = leftCollider[1].y + ballradius;
@@ -534,17 +525,15 @@ function draw()
 			if(!r_collidedRight) r_rightCollisioning();
 			print("COLLISION right");
 									
-			let tPlane = (t - r_rightCollisionTime) * timeFactor;
 			translate((+0.6 - lineWidth/2)*xM, 0);
 			rotate(angleRoffset);
 			translate((-0.6 + lineWidth/2)*xM, 0); // hillPointRight
 			yR = ballradius;
 	
-			// With position of xR (right ball) at left seesaw
 			dF = gF * sin(-angleRoffset);
-			sR = sR0 + vDR * tPlane + dF * (tPlane*tPlane)/2;
-			//print("dF: " + dF + ", vDR: " + vDR + ", sR: " + sR);
-			xR = sR; //right ball - right seesaw	
+			vxR = vxR + dF * dt;
+			sR = sR + vxR * dt;
+			xR = sR;
 		}
 	
 		if(xR <= rightCollider[0].x && r_collidedRight) {
@@ -553,19 +542,14 @@ function draw()
 			r_collidedRight = false;
 			r_rollingFromRight = true; 
 			rotate(-angleRoffset);	
-			vxR = -vDR; //right ball - right seesaw
+
+			xR = rightCollider[0].x;
 		}
 	}
 	
-	if(r_rollingFromLeft) {
-		xR = rolling(r_rollingStartTime, leftCollider[0].x, xR, vxR);
-		r_rollingFromRight = false;
-	}
-	if(r_rollingFromRight) {
-		xR = rolling(r_rollingStartTime, rightCollider[0].x, xR, vxR);
-		l_rollingFromLeft = false;
-	}
-	
+	if(r_rollingFromLeft) xR = rolling(xR, vxR);
+	if(r_rollingFromRight) xR = rolling(xR, vxR);
+
 	
 	// Draw right ball
 	fill('#008800');
@@ -585,7 +569,7 @@ function draw()
 	textSize(15);
 	text("Time: " + t.toFixed(2) + " s", 40, 75);
 	text("Delta: " + dt.toFixed(3) + " s", 40, 95);
-	text("Throwing Time: " + r_ThrowTimeL.toFixed(2) + "\nAgular-Left: " + angVelocityLeft.toFixed(2) + "\nvx: " + vxL.toFixed(2) + " / vy: " + vyL.toFixed(2), 40, 150);
+	text("Throwing Time: " + l_ThrowTime.toFixed(2) + "\nAgular-Left: " + angVelocityLeft.toFixed(2) + "\nvx: " + vxL.toFixed(2) + " / vy: " + vyL.toFixed(2), 40, 150);
 	text("Throwing Time : " + r_ThrowTime.toFixed(2) +"\nAgular-Right: " + angVelocityRight.toFixed(2) + "\nvx: " + vxR.toFixed(2) + " / vy: " + vyR.toFixed(2), 40, 250);
 	text("\nxL0: " + xL0.toFixed(2) +  " -- yL0: " + yL0.toFixed(2) + "\nxL: " + xL.toFixed(2) + " -- yL: " + yL.toFixed(2), 800, 150);
 	text("\nxR0: " + xR0.toFixed(2) +  " -- yR0: " + yR0.toFixed(2) + "\nxR: " + xR.toFixed(2) + " -- yR: " + yR.toFixed(2), 800, 250);
@@ -615,48 +599,35 @@ function clampRight(angle)
 	mouseWasReleased = false;
  }
 
- function r_leftCollisioning() {
-	r_rollingFromRight = false;
-	rightIsFlying = false;
-	r_collidedLeft = true;
-
-	r_leftCollisionTime = t;
-	sL0 = xR;
-	vDL = vxR;
- }
-
- function r_rightCollisioning() {
-	r_rollingFromLeft = false;
-	rightIsFlying = false;
-	r_collidedRight = true;
-
-	r_rightCollisionTime = t;
-	sR0 = xR;
-	vDR = vxR;
- }
-
  function l_leftCollisioning() {
 	l_rollingFromRight = false;
 	leftIsFlying = false;
 	l_collidedLeft = true;
-
-	l_leftCollisionTime = t;
-	sL0 = xL;
-	vDL = vxL;
+	sL = xL;
  }
 
  function l_rightCollisioning() {
 	l_rollingFromLeft = false;
 	leftIsFlying = false;
 	l_collidedRight = true;
-
-	l_rightCollisionTime = t;
-	sR0 = xL;
-	vDR = vxL;
+	sL = xL;
  }
 
- function rolling(startTime, collider, x, v) {
-	let rollingTime = (t - startTime) * timeFactor
-	x = collider + v*rollingTime;
+ function r_leftCollisioning() {
+	r_rollingFromRight = false;
+	rightIsFlying = false;
+	r_collidedLeft = true;
+	sR = xR;
+ }
+
+ function r_rightCollisioning() {
+	r_rollingFromLeft = false;
+	rightIsFlying = false;
+	r_collidedRight = true;
+	sR = xR;
+ }
+
+ function rolling(x, v) {
+	x = x + v*dt;
 	return x;
 }
