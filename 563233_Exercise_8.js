@@ -74,6 +74,17 @@ var angleRoffset = 0.0;
 var throwAngleLeft = 0.0;
 var throwAngleRight = 0.0;
 
+var rho = 1.3;         // Luftdichte in kg/m³
+var cw = 0.45;          // cw-Wert Vollkugel bei v > 5 m/s
+var ballradius = 0.016;
+var d = 0.032;           // Balldurchmesser
+var mBall = 2.5/1000;      // Ballmasse in kg
+var tau;     
+
+var windspeedms;
+var windspeedkmh;
+var windspeedScale = 22;
+
 var leftCollider, rightCollider; // colliders of seesaws
 var sL = 0.00, sR = 0.00;
 var sL0 = 0.00, sR0 = 0.00; 
@@ -81,7 +92,6 @@ var vDL = 0.00, vDR = 0.00;
 
 // Drag
 var myR = 0.03;
-
 
 // Status
 var draggingLeft;
@@ -126,6 +136,8 @@ function setup()
 	yL0 = lineHeight * yOffset;
 	xL = xL0;
 	yL = yL0;
+
+	tau = mBall/(rho*cw*PI*sq(d/2));
 	
 	leftCollider = [
 		createVector(-0.6 + lineWidth/2, 0),
@@ -153,12 +165,14 @@ function setup()
 	// Cartesian Coordinates
 	xi0 = 0.5 * width;
 	yi0 = height;
-	ballradius = 0.016;
 
 	button = createButton('Reset');
 	button.size(60, 35);
 	button.position(1.7*xM, 0.185*yM); //because sacling withh get implemented
 	button.mousePressed(pressedButton);
+
+	windspeedkmh = randomizeWindSpeed(windspeedScale); //maybe connect with button or generate for eacht throwlater
+	windspeedms = windspeedkmh / 3.6;
 }
 
 function pressedButton() 
@@ -285,10 +299,14 @@ function draw()
 	// 2.1.2 Left Ball -----------------------------------------------------------------------------------------------
 	translate(+0.6*xM, -triHeight*yM)	// move back to origing (xi0, yi0)
 
-	if (leftIsFlying && (!l_rollingFromLeft || !l_rollingFromRight)) {
-		xL = xL + vxL * dt;
-		vyL = vyL -gF * dt;
-		yL = yL + vyL *dt;
+	// Hier! müssen wir rein
+
+	if (leftIsFlying && (!l_rollingFromLeft || !l_rollingFromRight)) {		
+		var vx_ = vxL;
+		vxL = vxL - ((vxL-windspeedms)*sqrt(sq(vxL-windspeedms)+sq(vyL))/(2*tau))*dt;      // I. Integration
+		vyL = vyL - (vyL*sqrt(sq(vx_-windspeedms)+sq(vyL))/(2*tau) + gF)*dt;
+		xL = xL + vxL*dt;                                        // II. Integration
+		yL = yL + vyL*dt;
 	
 		if (yL < (0 + ballradius))
 		{	
@@ -377,7 +395,6 @@ function draw()
 	strokeWeight(1);
 	circle(xL*xM, yL*yM, 2*ballradius*M);
 	pop()
-
 	// End of 2.1 - Left Player ------------------------------------------------------------------------------------
 
 
@@ -451,10 +468,15 @@ function draw()
 	// 2.2.2 Right Ball ----------------------------------------------------------------
 	translate(-0.6*xM, -triHeight*yM)	// move back to origin (xi0, yi0)
 
+	// Hier! müssen wir rein	
+
+
 	if(rightIsFlying && (!r_rollingFromLeft || !r_rollingFromRight)) {
-		xR = xR + vxR * dt;
-		vyR = vyR -gF * dt;
-		yR = yR + vyR *dt;
+		var vx_ = vxR;
+		vxR = vxR - ((vxR-windspeedms)*sqrt(sq(vxR-windspeedms)+sq(vyR))/(2*tau))*dt;         // I. Integration
+		vyR = vyR - (vyR*sqrt(sq(vx_-windspeedms)+sq(vyR))/(2*tau) + gF)*dt;
+		xR = xR + vxR*dt;                                        // II. Integration
+		yR = yR + vyR*dt;
 	
 		if (yR < (0 + ballradius))
 		{	
@@ -543,8 +565,8 @@ function draw()
 	stroke('#008800');
 	strokeWeight(1);
 	circle(xR*xM, yR*yM, 2*ballradius*M);
-
 	pop();
+
 	pop(); // End of l.0 - Scale and Metrics (l. 183)
 	t = t + dt;
 
@@ -557,9 +579,10 @@ function draw()
 	text("Time: " + t.toFixed(2) + " s", 40, 75);
 	text("Delta: " + dt.toFixed(3) + " s", 40, 95);
 	text("Throwing Time: " + l_ThrowTime.toFixed(2) + "\nAgular-Left: " + angVelocityLeft.toFixed(2) + "\nvx: " + vxL.toFixed(2) + " / vy: " + vyL.toFixed(2), 40, 150);
-	text("Throwing Time : " + r_ThrowTime.toFixed(2) +"\nAgular-Right: " + angVelocityRight.toFixed(2) + "\nvx: " + vxR.toFixed(2) + " / vy: " + vyR.toFixed(2), 40, 250);
+	text("Throwing Time: " + r_ThrowTime.toFixed(2) +"\nAgular-Right: " + angVelocityRight.toFixed(2) + "\nvx: " + vxR.toFixed(2) + " / vy: " + vyR.toFixed(2), 40, 250);
 	text("\nxL0: " + xL0.toFixed(2) +  " -- yL0: " + yL0.toFixed(2) + "\nxL: " + xL.toFixed(2) + " -- yL: " + yL.toFixed(2), 800, 150);
 	text("\nxR0: " + xR0.toFixed(2) +  " -- yR0: " + yR0.toFixed(2) + "\nxR: " + xR.toFixed(2) + " -- yR: " + yR.toFixed(2), 800, 250);
+	text("Windspeed: " + windspeedkmh.toFixed(2), 40, 340);
 }
 
 function clampLeft(angle) 
@@ -634,4 +657,9 @@ function rightRolling() {
 
 	rightIsFlying = false;
 	return vxR;
+}
+
+function randomizeWindSpeed(number) 
+{
+	return Math.random() * (number + number) - number;
 }

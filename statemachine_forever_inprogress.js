@@ -6,7 +6,6 @@
 /*                                                */
 /**************************************************/
 
-
 // Creating Canvas
 var canvas; 
 var canvasID = 'pTest';
@@ -82,8 +81,10 @@ var vDL = 0.00, vDR = 0.00;
 // Drag
 var myR = 0.03;
 
-
 // Status
+var left_player, right_player;
+
+
 var draggingLeft;
 var draggingRight;
 
@@ -214,6 +215,115 @@ function draw()
 
 
 	// 2.1.1 Left player area -------------------------------------------------------------------------------------
+
+
+
+	switch (left_player) 
+	{
+		case "init":
+			push();
+			translate(-0.6 *xM, triHeight *yM); // translate left
+			angleLoffset = atan2(triHeight, -(0.6 + lineWidth/2) - (-0.6)) - 180;
+			var distanceLeft = pow((mouseXk - (-0.6*xM + (-lineWidth/2)*xM)),2) + pow(mouseYk - (lineHeight*yM), 2);
+
+			//TODO transition to dragging
+			if(!draggingRight && distanceLeft < pow(mouseTreshhold,2)/2 && !leftIsFlying || draggingLeft)
+
+		break;
+
+	
+		case "dragging":
+			strokeWeight(0)
+			fill('#ff000088');
+
+			if(!draggingLeft) 
+			{
+				circle((-lineWidth/2)*xM, (triHeight*yM), hightligh);
+			}
+			
+			if(mouseIsPressed) 
+			{
+				draggingLeft = true;
+				releasedLeft = false;
+
+				// anglemode() https://p5js.org/reference/#/p5/angleMode
+				//flip 180° right quadrants due to atan
+				angleLeft = atan2(mouseYk - (triHeight * yM), mouseXk - (-0.6 * xM)) - 180; //flip 180° right quadrants due to atan
+				angleLeft -= angleLoffset;
+				angleLeft = clampLeft(angleLeft);
+				rotate(angleLeft);
+				circle((- (lineWidth/2)*xM), (triHeight*yM), hightligh);
+			}
+
+			//TODO transition to throwing
+			else if (mouseWasReleased)
+		break;
+
+
+		case "throwing":
+			if (!draggingLeft) mouseWasReleased = false;
+
+			else
+			{
+				draggingLeft = false;
+				releasedLeft = true;
+				leftIsCompressing = true;
+				throwAngleLeft = Math.abs(angleLeft);
+				print("throw: " + throwAngleLeft + "°");
+			}
+
+			if (releasedLeft && angleLeft > 0 && leftIsCompressing) 
+			{
+				angVelocityLeft = throwAngleLeft * 0.1; //adjust the catapult here
+				angleLeft -= angVelocityLeft;
+				angleLeft = clampLeft(angleLeft);
+				rotate(angleLeft);
+			}
+		
+			if (releasedLeft && angleLeft == 0 && leftIsCompressing && (!l_rollingFromLeft || !l_rollingFromRight))
+			{
+				leftIsCompressing = false;
+				leftIsFlying = true;
+		
+				vxL = -angVelocityLeft * Math.sin(angleLoffset) *0.5;
+				vyL =  angVelocityLeft * Math.cos(angleLoffset) *6;
+				l_ThrowTime = t;
+			}	
+		break;
+		
+
+		case "flying":
+
+		break;
+
+
+		case "rolling":
+
+		break;
+
+
+		case "sloopingLeft":
+		
+		break;
+
+
+		case "sloopingRight":
+
+		break;
+
+
+		case "abwurfDingens":
+
+		break;
+	}
+
+	// left catapult
+	fill('#ffffff');
+	strokeWeight(2);
+	line((-lineWidth / 2)*xM, triHeight*yM, lineWidth / 2 * xM, - triHeight*yM);
+
+	
+	/*
 	push();
 	translate(-0.6 *xM, triHeight *yM); // translate left
 	angleLoffset = atan2(triHeight, -(0.6 + lineWidth/2) - (-0.6)) - 180;
@@ -379,7 +489,7 @@ function draw()
 	pop()
 
 	// End of 2.1 - Left Player ------------------------------------------------------------------------------------
-
+	*/
 
 	// 2.2.1 Right player ------------------------------------------------------------------------------------------
 	push();
