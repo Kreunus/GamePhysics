@@ -17,11 +17,11 @@ var buttonPressed = false;
 var mouseClicked = false;
 
 // cartesian and origin
-var xi0, yi0;					// current origin in px
-var xL, yL, xR, yR;				// current coordninates of balls
-var xL0, yL0, xR0, yR0;			// Startpositions of the balls
-var xOffset = 0.825;			// xOffset for starting position
-var yOffset = 1.2;				// yOffset for starting position
+var xi0, yi0;							// current origin in px
+var xL, yL, xR, yR, xC, yC;				// current coordninates of balls
+var xL0, yL0, xR0, yR0, xC0, yC0;		// Startpositions of the balls
+var xOffset = 0.825;					// xOffset for starting position
+var yOffset = 1.2;						// yOffset for starting position
 
 // Scaling
 var M, xM, yM;
@@ -60,9 +60,10 @@ var r_rollingStartTime = 0.00;
 var gF = 9.81; // gravitation force
 var dF = 0.00; // downhill-slope force
 
+var vxC = 0.0, vyC = 0.0;
 var vxL = 0.0, vyL = 0.0;
-var vxR = 0.0, vyR = 0.0;	// current velocity
-var vxL0, vyL0, vxR0, vyR0;  // starting velocity	
+var vxR = 0.0, vyR = 0.0 ;	// current velocity
+var vxL0, vyL0, vxR0, vyR0, vxC0, vyC0;  // starting velocity	
 
 var angVelocityLeft = 0.0;
 var angVelocityRight = 0.0; 
@@ -74,6 +75,18 @@ var angleRoffset = 0.0;
 var throwAngleLeft = 0.0;
 var throwAngleRight = 0.0;
 
+var tau;
+var rho = 1.3;         // Luftdichte in kg/m³
+var cw = 0.45;          // cw-Wert Vollkugel bei v > 5 m/s
+var ballradius = 0.016;
+var d = 0.032;           // Balldurchmesser
+var mBall = 2.5/1000;      // Ballmasse in kg
+
+var lama = 0.4;
+var windspeedms;
+var windspeedkmh;
+var windspeedScale = 0;
+
 var leftCollider, rightCollider; // colliders of seesaws
 var sL = 0.00, sR = 0.00;
 var sL0 = 0.00, sR0 = 0.00; 
@@ -82,8 +95,11 @@ var vDL = 0.00, vDR = 0.00;
 // Drag
 var myR = 0.03;
 
-
 // Status
+var customBall = false;
+var customBallLive = false;
+var c_physics = false;
+
 var draggingLeft;
 var draggingRight;
 
@@ -96,21 +112,27 @@ var releasedRight = true;
 var rightIsCompressing = false;
 var leftIsCompressing = false;
 
-var leftIsFlying = false;
-var rightIsFlying = false;
+var l_flying = false;
+var r_flying = false;
+var c_flying = false;
 
 var l_grounded = false;
 var r_grounded = false;
+var c_grounded = false;
 
 var l_collidedLeft = false;
 var l_collidedRight = false;
 var r_collidedLeft = false;
 var r_collidedRight = false;
+var c_collidedLeft = false;
+var c_collidedRight = false;
 
 var l_rollingFromLeft = false;
 var l_rollingFromRight = false;
 var r_rollingFromLeft = false;
 var r_rollingFromRight = false;
+var c_rollingFromLeft = false;
+var c_rollingFromRight = false;
 
 // End of declaration ------------------------------------------------------------------------------------------------------
 
@@ -121,11 +143,19 @@ function setup()
 	yR0 = lineHeight * yOffset;
 	xR = xR0;
 	yR = yR0;
-
+	
 	xL0 = -0.6 - lineWidth/2 * xOffset;
 	yL0 = lineHeight * yOffset;
 	xL = xL0;
 	yL = yL0;
+
+	xC0 = 0.00;
+	yC0 = 0.50;
+	xC = xC0;
+	yC = yC0;
+
+
+	tau = mBall/(rho*cw*PI*sq(d/2));
 	
 	leftCollider = [
 		createVector(-0.6 + lineWidth/2, 0),
@@ -153,12 +183,14 @@ function setup()
 	// Cartesian Coordinates
 	xi0 = 0.5 * width;
 	yi0 = height;
-	ballradius = 0.016;
 
 	button = createButton('Reset');
 	button.size(60, 35);
 	button.position(1.7*xM, 0.185*yM); //because sacling withh get implemented
 	button.mousePressed(pressedButton);
+
+	windspeedkmh = randomizeWindSpeed(windspeedScale); //maybe connect with button or generate for eacht throwlater
+	windspeedms = windspeedkmh / 3.6;
 }
 
 function pressedButton() 
@@ -168,7 +200,9 @@ function pressedButton()
 
 function draw()
 {
-	background('#424549');
+	fill('#424549');
+	strokeWeight(0);
+	rect(0, 0, 1000, 500);
 	fill('#fafafa');
 
 	
@@ -218,7 +252,7 @@ function draw()
 	translate(-0.6 *xM, triHeight *yM); // translate left
 	angleLoffset = atan2(triHeight, -(0.6 + lineWidth/2) - (-0.6)) - 180;
 	var distanceLeft = pow((mouseXk - (-0.6*xM + (-lineWidth/2)*xM)),2) + pow(mouseYk - (lineHeight*yM), 2);
-	if(!draggingRight && distanceLeft < pow(mouseTreshhold,2)/2 && !leftIsFlying|| draggingLeft)
+	if(!draggingRight && distanceLeft < pow(mouseTreshhold,2)/2 && !l_flying|| draggingLeft)
 	{ //not same radius as drawn circle
 		strokeWeight(0)
 		fill('#ff000088');
@@ -269,7 +303,7 @@ function draw()
 	if (releasedLeft && angleLeft == 0 && leftIsCompressing && (!l_rollingFromLeft || !l_rollingFromRight))
 	{
 		leftIsCompressing = false;
-		leftIsFlying = true;
+		l_flying = true;
 
 		vxL = -angVelocityLeft * Math.sin(angleLoffset) *0.5;
 		vyL =  angVelocityLeft * Math.cos(angleLoffset) *6;
@@ -285,16 +319,26 @@ function draw()
 	// 2.1.2 Left Ball -----------------------------------------------------------------------------------------------
 	translate(+0.6*xM, -triHeight*yM)	// move back to origing (xi0, yi0)
 
-	if (leftIsFlying && (!l_rollingFromLeft || !l_rollingFromRight)) {
-		xL = xL + vxL * dt;
-		vyL = vyL -gF * dt;
-		yL = yL + vyL *dt;
+
+	if (l_flying && (!l_rollingFromLeft || !l_rollingFromRight)) {		
+		var vxT = vxL;
+		vxL = vxL - ((vxL-windspeedms)*sqrt(sq(vxL-windspeedms)+sq(vyL))/(2*tau))*dt;      // I. Integration
+		vyL = vyL - (vyL*sqrt(sq(vxT-windspeedms)+sq(vyL))/(2*tau) + gF)*dt;
+		xL = xL + vxL*dt;                                        // II. Integration
+		yL = yL + vyL*dt;
 	
 		if (yL < (0 + ballradius))
 		{	
-			yL = 0 + ballradius;
-			l_grounded = true;
-			//print("Ground trigger: " + yL.toFixed(1) + " <= " + yL0.toFixed(1));
+			yL = ballradius;
+
+			var vyT = vyL * (-1) * lama;
+			if(Math.abs(vyT) < 0.2)
+			{
+				l_flying = false;
+				l_grounded = true;
+			} 
+			
+			else vyL = vyT;
 		}
 	}
 
@@ -322,6 +366,21 @@ function draw()
 			rotate(-angleLoffset);	
 		
 			xL = leftCollider[0].x;
+		}
+	
+		if(xL <= leftCollider[1].x && l_collidedLeft)
+		{
+			l_collidedLeft = false;
+			l_flying = true;
+			l_grounded = false;
+
+			rotate(-angleLoffset);
+	
+			xL = xL + ballradius;
+			yL = leftCollider[1].y + ballradius;
+		
+			vxL = -angVelocityLeft * Math.sin(angleLoffset) *0.25;
+			vyL = angVelocityLeft * Math.cos(angleLoffset);
 		}
 	}
 		
@@ -354,9 +413,9 @@ function draw()
 	
 		if(xL >= rightCollider[1].x && l_collidedRight)
 		{
-			l_collidedRight = false;
-			leftIsFlying = true;
+			l_flying = true;
 			l_grounded = false;
+			l_collidedRight = false;
 
 			rotate(-angleRoffset);
 		
@@ -377,7 +436,6 @@ function draw()
 	strokeWeight(1);
 	circle(xL*xM, yL*yM, 2*ballradius*M);
 	pop()
-
 	// End of 2.1 - Left Player ------------------------------------------------------------------------------------
 
 
@@ -386,7 +444,7 @@ function draw()
 	translate(+0.6 *xM, triHeight *yM);
 	angleRoffset = atan2(triHeight, (0.6 + lineWidth/2) - (0.6));
 	var distanceRight = pow((mouseXk - (0.6*xM + (lineWidth/2)*xM)),2) + pow(mouseYk - (lineHeight*yM), 2);
-	if (!draggingLeft && distanceRight < pow(mouseTreshhold,2)/2 && !rightIsFlying|| draggingRight) 
+	if (!draggingLeft && distanceRight < pow(mouseTreshhold,2)/2 && !r_flying|| draggingRight) 
 	{ //not same radius as drawn circle
 		strokeWeight(0)
 		fill('#ff000088');
@@ -436,7 +494,7 @@ function draw()
 	if (releasedRight && angleRight == 0 && rightIsCompressing && (!r_rollingFromLeft || !r_rollingFromRight))
 	{
 		rightIsCompressing = false;
-		rightIsFlying = true;
+		r_flying = true;
 
 		vxR = -angVelocityRight * Math.sin(angleRoffset) *0.5;
 		vyR = angVelocityRight * Math.cos(angleRoffset) *6;
@@ -450,16 +508,27 @@ function draw()
 
 	// 2.2.2 Right Ball ----------------------------------------------------------------
 	translate(-0.6*xM, -triHeight*yM)	// move back to origin (xi0, yi0)
+	
 
-	if(rightIsFlying && (!r_rollingFromLeft || !r_rollingFromRight)) {
-		xR = xR + vxR * dt;
-		vyR = vyR -gF * dt;
-		yR = yR + vyR *dt;
+	if(r_flying && (!r_rollingFromLeft || !r_rollingFromRight)) {
+		var vx_ = vxR;
+		vxR = vxR - ((vxR-windspeedms)*sqrt(sq(vxR-windspeedms)+sq(vyR))/(2*tau))*dt;         // I. Integration
+		vyR = vyR - (vyR*sqrt(sq(vx_-windspeedms)+sq(vyR))/(2*tau) + gF)*dt;
+		xR = xR + vxR*dt;                                        // II. Integration
+		yR = yR + vyR*dt;
 	
 		if (yR < (0 + ballradius))
 		{	
-			yR = 0 + ballradius;
-			r_grounded = true;
+			yR = ballradius;
+
+			var vyT = vyR * (-1) * lama;
+			if(Math.abs(vyT) < 0.05)
+			{
+				r_flying = false;
+				r_grounded = true;
+			} 
+			
+			else vyR = vyT;
 		}
 	}
 
@@ -492,9 +561,9 @@ function draw()
 	
 		if(xR <= leftCollider[1].x && r_collidedLeft)
 		{
-			r_collidedLeft = false;
-			rightIsFlying = true;
+			r_flying = true;
 			r_grounded = false;
+			r_collidedLeft = false;
 
 			rotate(-angleLoffset);
 	
@@ -533,6 +602,21 @@ function draw()
 
 			xR = rightCollider[0].x;
 		}
+
+		if(xR >= rightCollider[1].x && r_collidedRight)
+		{
+			r_flying = true;
+			r_grounded = false;
+			r_collidedRight = false;
+
+			rotate(-angleRoffset);
+		
+			xR = xR - ballradius;
+			yR = rightCollider[1].y + ballradius;
+
+			vxR = angVelocityRigth * Math.sin(-angleRoffset) *0.25;
+			vyR = angVelocityRight * Math.cos(angleRoffset);
+		}
 	}
 	if(r_grounded || r_rollingFromLeft) rightRolling();	
 	if(r_grounded || r_rollingFromRight) rightRolling();
@@ -543,8 +627,31 @@ function draw()
 	stroke('#008800');
 	strokeWeight(1);
 	circle(xR*xM, yR*yM, 2*ballradius*M);
-
 	pop();
+
+
+	//3.1 Custom Ball -------------------------------------------------------------
+	//HIER!
+
+	window.addEventListener("keydown", startCustomBall, false);
+
+	if(customBall) 
+	{
+		window.addEventListener("keydown", moveCustomBall, false);
+		
+		push();
+
+		fill('#008888');
+		strokeWeight(0);
+		
+		circle(xC*xM, yC*yM, 2*ballradius*M);
+		line(xC*xM, yC*yM, mouseX, mouseY);
+
+		if (customBallLive) customBallPhysics(); // 3.2
+		pop();
+	}
+
+	
 	pop(); // End of l.0 - Scale and Metrics (l. 183)
 	t = t + dt;
 
@@ -557,9 +664,202 @@ function draw()
 	text("Time: " + t.toFixed(2) + " s", 40, 75);
 	text("Delta: " + dt.toFixed(3) + " s", 40, 95);
 	text("Throwing Time: " + l_ThrowTime.toFixed(2) + "\nAgular-Left: " + angVelocityLeft.toFixed(2) + "\nvx: " + vxL.toFixed(2) + " / vy: " + vyL.toFixed(2), 40, 150);
-	text("Throwing Time : " + r_ThrowTime.toFixed(2) +"\nAgular-Right: " + angVelocityRight.toFixed(2) + "\nvx: " + vxR.toFixed(2) + " / vy: " + vyR.toFixed(2), 40, 250);
-	text("\nxL0: " + xL0.toFixed(2) +  " -- yL0: " + yL0.toFixed(2) + "\nxL: " + xL.toFixed(2) + " -- yL: " + yL.toFixed(2), 800, 150);
-	text("\nxR0: " + xR0.toFixed(2) +  " -- yR0: " + yR0.toFixed(2) + "\nxR: " + xR.toFixed(2) + " -- yR: " + yR.toFixed(2), 800, 250);
+	text("Throwing Time: " + r_ThrowTime.toFixed(2) +"\nAgular-Right: " + angVelocityRight.toFixed(2) + "\nvx: " + vxR.toFixed(2) + " / vy: " + vyR.toFixed(2), 40, 250);
+	text("xL0: " + xL0.toFixed(2) +  " -- yL0: " + yL0.toFixed(2) + "\nxL: " + xL.toFixed(2) + " -- yL: " + yL.toFixed(2), 800, 150);
+	text("xR0: " + xR0.toFixed(2) +  " -- yR0: " + yR0.toFixed(2) + "\nxR: " + xR.toFixed(2) + " -- yR: " + yR.toFixed(2), 800, 250);
+	text("xC0: " + xC0.toFixed(2) +  " -- yC0: " + yC0.toFixed(2) + "\nxC: " + xC.toFixed(2) + " -- yC: " + yC.toFixed(2), 800, 350);
+	text("Windspeed: " + windspeedkmh.toFixed(2), 40, 340);
+}
+
+
+//HIER!
+
+//3.2 Custom Ball Physics
+function customBallPhysics()
+{
+	//3.2.1 Custom Ball Flying
+	
+	if(!c_physics) {
+		vxC = 0.2;
+		vyC = 2;
+		c_physics = true;
+	}
+
+	c_flying = true;
+
+
+
+	if(c_flying && (!c_rollingFromLeft || !c_rollingFromRight)) {
+		var vx_ = vxC;
+		vxC = vxC - ((vxC-windspeedms)*sqrt(sq(vxC-windspeedms)+sq(vyC))/(2*tau))*dt;         // I. Integration
+		vyC = vyC - (vyC*sqrt(sq(vx_-windspeedms)+sq(vyC))/(2*tau) + gF)*dt;
+		xC = xC + vxC*dt;                                        // II. Integration
+		yC = yC + vyC*dt;
+	
+		if (yC < (0 + ballradius))
+		{	
+			yC = ballradius;
+
+			var vyT = vyC * (-1) * lama;
+			if(Math.abs(vyT) < 0.05)
+			{
+				c_flying = false;
+				c_grounded = true;
+			} 
+			
+			else vyC = vyT;
+		}
+	}
+
+	// 3.2.2 Custom Ball Collision ------------------------------------------------------------------------------------
+	if (xC < 0 && c_grounded) 
+	{ //COLLISION with left seesaw	
+		if(xC <= leftCollider[0].x && xC >= leftCollider[1].x && yC <= leftCollider[1].y && !c_rollingFromLeft) {
+			if(!c_collidedLeft) c_leftCollisioning();
+			print("COLLISION left");
+					
+			translate((-0.6 + lineWidth/2)*xM, 0);
+			rotate(angleLoffset);
+			translate((+0.6 - lineWidth/2)*xM, 0); // hillPointRight
+			yC = ballradius;
+		
+			dF = gF * sin(-angleLoffset);
+			vxC = vxC + (gF * cos(-angleLoffset) * myR + dF) * dt;
+			sC = sC + vxC * dt;
+			xC = sC;
+		}
+		
+		if(xC >= leftCollider[0].x && c_collidedLeft) {
+			print("COLLISION left over");
+			c_rollingStartTime = t;
+			c_collidedLeft = false;
+			c_rollingFromLeft = true;
+			rotate(-angleLoffset);	
+		
+			xC = leftCollider[0].x;
+		}
+		
+		if(xC <= leftCollider[1].x && c_collidedLeft)
+		{
+			c_flying = true;
+			c_grounded = false;
+			c_collidedLeft = false;
+	
+			rotate(-angleLoffset);
+		
+			xC = xC + ballradius;
+			yC = leftCollider[1].y + ballradius;
+			
+			//HIER! Todo Vektorzeug
+	
+			/*
+			vxC = angVelocityRigth * Math.sin(-angleRoffset) *0.25;
+			vyC = angVelocityRight * Math.cos(angleRoffset);
+			*/
+		}
+	}
+		
+	if (xC > 0 && c_grounded) 
+	{ //COLLISION with right seesaw
+		if(xC >= rightCollider[0].x && xC <= rightCollider[1].x && yC <= rightCollider[1].y && !c_rollingFromRight) 
+		{
+			if(!c_collidedRight) r_rightCollisioning();
+			print("COLLISION right");
+									
+			translate((+0.6 - lineWidth/2)*xM, 0);
+			rotate(angleRoffset);
+			translate((-0.6 + lineWidth/2)*xM, 0); // hillPointRight
+			yC = ballradius;
+		
+			dF = gF * sin(-angleRoffset);
+			vxC = vxC + (gF * cos(-angleRoffset) * myR + dF)* dt;
+			sC = sC + vxC * dt;
+			xC = sC;
+		}
+		
+		if(xC <= rightCollider[0].x && c_collidedRight) {
+			print("COLLISION right over");
+			c_rollingStartTime = t;
+			c_collidedRight = false;
+			c_rollingFromRight = true; 
+			rotate(-angleRoffset);	
+	
+			xC = rightCollider[0].x;
+		}
+	
+		if(xC >= rightCollider[1].x && c_collidedRight)
+		{
+			c_flying = true;
+			c_grounded = false;
+			c_collidedRight = false;
+	
+			rotate(-angleRoffset);
+			
+			xC = xC - ballradius;
+			yC = rightCollider[1].y + ballradius;
+	
+			
+			//HIER! Todo Vektorzeug
+
+			/*
+			vxC = angVelocityRigth * Math.sin(-angleRoffset) *0.25;
+			vyC = angVelocityRight * Math.cos(angleRoffset);
+			*/
+		}
+	}
+
+	if(c_grounded || c_rollingFromLeft) customRolling();	
+	if(c_grounded || c_rollingFromRight) customRolling();
+}
+
+
+function startCustomBall(key)
+{
+	if (key.keyCode == "13")  // Enter
+	{
+		console.log("Enter");
+		
+		if(!customBall) customBall = true;
+		else customBall = false;
+	}
+}
+
+
+function moveCustomBall(key)
+{
+	if (key.keyCode == "87") // W
+	{
+		console.log("W");
+		yC = yC + 0.01;
+		if (yC > 0.5) xC = 0.5;
+	}
+
+	if (key.keyCode == "65") // A
+	{
+		console.log("A");
+		xC = xC - 0.01;
+		if (xC < -1.0) xC = -1.0;
+	}
+
+	if (key.keyCode == "83") // S
+	{
+		console.log("S");
+		yC = yC - 0.01;
+		if (yC < -0.5) yC = -0.5;
+	}
+
+	if (key.keyCode == "68") // D
+	{
+		console.log("D");
+		xC = xC + 0.01;
+		if (xC > 1) xC = 1.0; 
+	}
+
+	if (key.keyCode == "32") // Space
+	{
+		console.log("Space");
+		customBallLive = true;
+	}
 }
 
 function clampLeft(angle) 
@@ -588,30 +888,44 @@ function clampRight(angle)
 
  function l_leftCollisioning() {
 	l_rollingFromRight = false;
-	leftIsFlying = false;
+	l_flying = false;
 	l_collidedLeft = true;
 	sL = xL;
  }
 
  function l_rightCollisioning() {
 	l_rollingFromLeft = false;
-	leftIsFlying = false;
+	l_flying = false;
 	l_collidedRight = true;
 	sL = xL;
  }
 
  function r_leftCollisioning() {
 	r_rollingFromRight = false;
-	rightIsFlying = false;
+	r_flying = false;
 	r_collidedLeft = true;
 	sR = xR;
  }
 
  function r_rightCollisioning() {
 	r_rollingFromLeft = false;
-	rightIsFlying = false;
+	r_flying = false;
 	r_collidedRight = true;
 	sR = xR;
+ }
+
+ function c_leftCollisioning() {
+	c_rollingFromRight = false;
+	c_flying = false;
+	c_collidedLeft = true;
+	sC = xC;
+ }
+
+ function c_rightCollisioning() {
+	c_rollingFromLeft = false;
+	c_flying = false;
+	c_collidedRight = true;
+	sC = xC;
  }
 
  function leftRolling() {
@@ -621,7 +935,6 @@ function clampRight(angle)
 	if(Math.abs(vxL) < 0.01) vxL = 0;
 	xL = xL + vxL * dt;	
 
-	leftIsFlying = false;
 	return vxL;
 }
 
@@ -632,6 +945,20 @@ function rightRolling() {
 	if(Math.abs(vxR) < 0.01) vxR = 0;
 	xR = xR + vxR * dt;	
 
-	rightIsFlying = false;
 	return vxR;
+}
+
+function customRolling() {
+	if(vxC > 0) vxC = vxC - myR * gF * dt;
+	else vxC = vxC + myR * gF * dt;
+
+	if(Math.abs(vxC) < 0.01) vxC = 0;
+	xC = xC + vxC * dt;	
+
+	return vxC;
+}
+
+function randomizeWindSpeed(number) 
+{
+	return Math.random() * (number + number) - number;
 }
