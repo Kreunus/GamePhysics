@@ -85,7 +85,7 @@ var mBall = 2.5/1000;      // Ballmasse in kg
 var lama = 0.4;
 var windspeedms;
 var windspeedkmh;
-var windspeedScale = 0;
+var windspeedScale = 15;
 
 var velocityVector;
 var leftCollider, rightCollider; // colliders of seesaws
@@ -183,10 +183,15 @@ function setup()
 	xi0 = 0.5 * width;
 	yi0 = height;
 
-	button = createButton('Restart Game');
+	button = createButton('Restart App');
 	button.size(120, 35);
-	button.position(830, 90); //because sacling withh get implemented
+	button.position(830, 50); //because sacling withh get implemented
 	button.mousePressed(pressedButton);
+
+	testbutton = createButton('Testmode');
+	testbutton.size(120, 35);
+	testbutton.position(830, 90); //because sacling withh get implemented
+	testbutton.mousePressed(pressedTestButton);
 
 	windspeedkmh = randomizeWindSpeed(windspeedScale); //maybe connect with button or generate for eacht throwlater
 	windspeedms = windspeedkmh / 3.6;
@@ -195,6 +200,21 @@ function setup()
 function pressedButton() 
 {
 	window.location.href = window.location.pathname;
+}
+
+function pressedTestButton()
+{
+	if(!customBall) 
+	{
+		customBall = true;
+		return;
+	}
+
+	if(customBall)
+	{
+		customBall = false;
+		return;
+	}
 }
 
 function draw()
@@ -661,7 +681,7 @@ function draw()
 	// Administration
 	fill('#fafafa');
 	textSize(40);
-	text("Treffer " + "0" + ":" + "0", 400, 100);
+	if(!customBall) text("Treffer " + "0" + ":" + "0", 400, 100);
 	
 	textSize(15);
 	text("Time: " + t.toFixed(2) + " s", 40, 75);
@@ -672,6 +692,9 @@ function draw()
 	text("xR0: " + xR0.toFixed(2) +  " -- yR0: " + yR0.toFixed(2) + "\nxR: " + xR.toFixed(2) + " -- yR: " + yR.toFixed(2), 800, 250);
 	text("xC0: " + xC0.toFixed(2) +  " -- yC0: " + yC0.toFixed(2) + "\nxC: " + xC.toFixed(2) + " -- yC: " + yC.toFixed(2), 800, 350);
 	text("Windspeed: " + windspeedkmh.toFixed(2), 40, 340);
+
+	textSize(20);
+	if(customBall) text("R:  Reset Test Ball \nWASD:  Move Test Ball \nSpace:  Shoot Test Ball", 400, 100);
 }
 
 
