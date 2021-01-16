@@ -82,10 +82,10 @@ var ballradius = 0.016;
 var d = 0.032;           // Balldurchmesser
 var mBall = 2.5/1000;      // Ballmasse in kg
 
-var lama = 0.4;
+var lama = 0.6;
 var windspeedms;
 var windspeedkmh;
-var windspeedScale = 15;
+var windspeedScale = 0;
 
 var velocityVector;
 var leftCollider, rightCollider; // colliders of seesaws
@@ -97,6 +97,8 @@ var vDL = 0.00, vDR = 0.00;
 var myR = 0.03;
 
 // Status
+var paused = false;
+
 var pulsed = false;
 var moveable = false;
 var customBall = false;
@@ -446,9 +448,7 @@ function draw()
 			vyL = angVelocityLeft * Math.cos(angleLoffset);
 		}
 	}
-	if (l_grounded || l_rollingFromLeft) leftRolling();
-	if (l_grounded || l_rollingFromRight) leftRolling();
-		
+	if (l_grounded || l_rollingFromLeft || l_rollingFromRight) leftRolling();
 	
 	// Draw left ball
 	fill('#008800');
@@ -639,8 +639,7 @@ function draw()
 			vyR = angVelocityRight * Math.cos(angleRoffset);
 		}
 	}
-	if(r_grounded || r_rollingFromLeft) rightRolling();	
-	if(r_grounded || r_rollingFromRight) rightRolling();
+	if(r_grounded || r_rollingFromLeft || r_rollingFromRight) rightRolling();
 
 	
 	// Draw right ball
@@ -694,7 +693,7 @@ function draw()
 	text("Windspeed: " + windspeedkmh.toFixed(2), 40, 340);
 
 	textSize(20);
-	if(customBall) text("R:  Reset Test Ball \nWASD:  Move Test Ball \nSpace:  Shoot Test Ball", 400, 100);
+	if(customBall) text("P: Pause the Game \nR:  Reset Test Ball \nWASD:  Move Test Ball \nSpace:  Shoot Test Ball", 400, 100);
 }
 
 
@@ -722,6 +721,21 @@ function customBallPhysics()
 }
 
 
+function keyPressed()
+{
+	if(!paused && keyCode == 80) 
+	{
+		noLoop();
+		paused = true;
+	}
+
+	else if(paused && keyCode == 80)
+	{
+		loop();
+		paused = false;
+	}
+}
+
 function startCustomBall(key)
 {
 	if (key.keyCode == "13")  // Enter
@@ -746,7 +760,6 @@ function moveCustomBall(key)
 		vxC = 0;
 		vyC = 0;
 
-		
 		pulsed = false;
 		customBallLive = false;
 	}
@@ -854,9 +867,9 @@ function clampRight(angle)
 	sC = xC;
  }
 
- function leftRolling() {
+ function leftRolling() {	
 	if(vxL > 0) vxL = vxL - myR * gF * dt;
-	else vxL = vxL + myR * gF * dt;
+	else if(vxL < 0) vxL = vxL + myR * gF * dt;
 
 	if(Math.abs(vxL) < 0.01) vxL = 0;
 	xL = xL + vxL * dt;	
@@ -864,9 +877,9 @@ function clampRight(angle)
 	return vxL;
 }
 
-function rightRolling() {
+function rightRolling() {	
 	if(vxR > 0) vxR = vxR - myR * gF * dt;
-	else vxR = vxR + myR * gF * dt;
+	else if (vxR < 0) vxR = vxR + myR * gF * dt;
 
 	if(Math.abs(vxR) < 0.01) vxR = 0;
 	xR = xR + vxR * dt;	
