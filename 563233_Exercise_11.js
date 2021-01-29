@@ -697,7 +697,7 @@ function customCollosion() {
 	if (customCollosioning) {  // Collision
 		console.log("Hello... impact")
 		var beta = atan2(yC - yM, xC - xM);
-		var phi = beta - HALF_PI;
+		var phi = beta - 90;
 
 		// Impact
 		var v1T = 0; //vxM * cos(phi) + vyM * sin(phi);
