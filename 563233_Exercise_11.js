@@ -741,7 +741,7 @@ function customCollosion() {
 
 		if(m_grounded) 
 		{
-			vyC = Math.abs(vyC) + Math.abs(vyM);
+			vyC = Math.abs(vyC) + Math.abs(vyM); // Backforce
 		}
 	}
 }
