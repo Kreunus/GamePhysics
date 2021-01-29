@@ -120,9 +120,13 @@ var leftIsCompressing = false;
 
 var l_flying = false;
 var r_flying = false;
+var c_flying = false;
+var m_flying = false;
 
 var l_grounded = false;
 var r_grounded = false;
+var c_grounded = false;
+var m_grounded = true;
 
 var l_collidedLeft = false;
 var l_collidedRight = false;
@@ -156,7 +160,7 @@ function setup() {
 	yC = yC0;
 
 	xM0 = 0.0;
-	yM0 = 0.2;
+	yM0 = 0.0 + radius;
 	xM = xM0;
 	yM = yM0;
 
@@ -643,6 +647,16 @@ function draw() {
 	fill('#ff8800');
 	stroke('#ff8800');
 	strokeWeight(1);
+
+	
+
+	if (yM < (0 + radius)) {
+		yM = radius;
+
+		m_flying = false;
+		m_grounded = true;
+		
+	}
 	circle(xM * xScaling, yM * yScaling, 2 * radius * xScaling);
 
 	pop(); // End of l.0 - Scale and Metrics (l. 183)
@@ -697,7 +711,7 @@ function customCollosion() {
 	if (customCollosioning) {  // Collision
 		console.log("Hello... impact")
 		var beta = atan2(yC - yM, xC - xM);
-		var phi = beta - 90;
+		var phi = beta - 90; //HALF_PI
 
 		// Impact
 		var v1T = 0; //vxM * cos(phi) + vyM * sin(phi);
@@ -719,11 +733,16 @@ function customCollosion() {
 		var v1y_ = -v1T_ * sin(-phi) + v1Z_ * cos(-phi);
 		var v2x_ = v2T_ * cos(-phi) + v2Z_ * sin(-phi);
 		var v2y_ = -v2T_ * sin(-phi) + v2Z_ * cos(-phi);
-	
+
 		vxM = v1x_;
 		vyM = v1y_;
 		vxC = v2x_;
 		vyC = v2y_;
+
+		if(m_grounded) 
+		{
+			vyC = Math.abs(vyC) + Math.abs(vyM);
+		}
 	}
 }
 
