@@ -666,7 +666,6 @@ function draw() {
 	text("xC0: " + xC0.toFixed(2) + " -- yC0: " + yC0.toFixed(2) + "\nxC: " + xC.toFixed(2) + " -- yC: " + yC.toFixed(2), 800, 225);
 	text("xM0: " + xM0.toFixed(2) + " -- yM0: " + yM0.toFixed(2) + "\nxM: " + xM.toFixed(2) + " -- yM: " + yM.toFixed(2), 800, 300);
 	
-
 	textSize(20);
 	if (customBall) text("P: Pause the Game \nR:  Reset Test Ball \nWASD:  Move Test Ball \nSpace:  Shoot Test Ball", 400, 100);
 }
@@ -701,27 +700,28 @@ function customCollosion() {
 		var phi = beta - HALF_PI;
 
 		// Impact
-		var v1T = xM * cos(phi) + yM * sin(phi);
-		var v1Z = -xM * sin(phi) + yM * cos(phi);
-		var v2T = xC * cos(phi) + yC * sin(phi);
-		var v2Z = -xC * sin(phi) + yC * cos(phi);
+		var v1T = 0; //vxM * cos(phi) + vyM * sin(phi);
+		var v1Z = 0; //-vxM * sin(phi) + vyM * cos(phi);
+
+		var v2T = vxC * cos(phi) + vyC * sin(phi);
+		var v2Z = -vxC * sin(phi) + vyC * cos(phi);
 
 		// Energy Flow
 		var v1Z_ = v2Z;							// Radialgeschwindigkeiten ((m1-m2)*v1Z+2*m2*v2Z)/(m1+m2);
 		var v1T_ = v1T;							// Tangentialgeschwindigkeiten
-		var v1_ = sqrt(sq(v1Z_)+sq(v1T_));   
+		//var v1_ = sqrt(sq(v1Z_)+sq(v1T_));   
 
 		var v2Z_= v1Z;       					// Radialgeschwindigkeiten ((m1-m2)*v1Z+2*m2*v2Z)/(m1+m2);
 		var v2T_ = v2T;       					// Tangentialgeschwindigkeiten
-		var v2_ = sqrt(sq(v2Z_)+sq(v2T_)); 
+		//var v2_ = sqrt(sq(v2Z_)+sq(v2T_)); 
 
 		var v1x_ = v1T_ * cos(-phi) + v1Z_ * sin(-phi);
 		var v1y_ = -v1T_ * sin(-phi) + v1Z_ * cos(-phi);
 		var v2x_ = v2T_ * cos(-phi) + v2Z_ * sin(-phi);
 		var v2y_ = -v2T_ * sin(-phi) + v2Z_ * cos(-phi);
 	
-		vxM = -v1x_;
-		vyM = -v1y_;
+		vxM = v1x_;
+		vyM = v1y_;
 		vxC = v2x_;
 		vyC = v2y_;
 	}
