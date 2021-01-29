@@ -90,7 +90,7 @@ var mBall = 2.5 / 1000;      // Ballmasse in kg
 var lama = 0.6;
 var windspeedms;
 var windspeedkmh;
-var windspeedScale = 10;
+var windspeedScale = 6;
 
 var velocityVector;
 var leftCollider, rightCollider; // colliders of seesaws
@@ -99,8 +99,8 @@ var sL0 = 0.00, sR0 = 0.00;
 var vDL = 0.00, vDR = 0.00;
 
 // Drag
-var myR = 0.03;
-var myM = 0.2;
+var myR = 0.08;
+var myM = 0.19;
 
 // Status
 var paused = false;
@@ -197,6 +197,11 @@ function setup()
 	testbutton.size(120, 35);
 	testbutton.position(830, 90); //because sacling withh get implemented
 	testbutton.mousePressed(pressedTestButton);
+
+	changewindbutton = createButton('Change Windspeed');
+	changewindbutton.size(120, 35);
+	changewindbutton.position(60, 355);
+	changewindbutton.mousePressed(changeWindSpeed);
 }
 
 function nextRound()
@@ -245,6 +250,9 @@ function nextRound()
 
 	leftBallFinished = false;
 	rightBallFinished = false;
+
+	angVelocityLeft = 0.0;
+	angVelocityRight = 0.0;
 
 	xR0 = +0.6 + lineWidth / 2 * xOffset;
 	yR0 = lineHeight * yOffset;
@@ -324,6 +332,9 @@ function resetRound()
 	leftBallFinished = false;
 	rightBallFinished = false;
 
+	angVelocityLeft = 0.0;
+	angVelocityRight = 0.0;
+
 	xR0 = +0.6 + lineWidth / 2 * xOffset;
 	yR0 = lineHeight * yOffset;
 	xR = xR0;
@@ -338,6 +349,12 @@ function resetRound()
 	vxL = 0.0;
 	vyL = 0.0
 
+	windspeedkmh = randomizeWindSpeed(windspeedScale); //maybe connect with button or generate for eacht throwlater
+	windspeedms = windspeedkmh / 3.6;
+}
+
+function changeWindSpeed() 
+{
 	windspeedkmh = randomizeWindSpeed(windspeedScale); //maybe connect with button or generate for eacht throwlater
 	windspeedms = windspeedkmh / 3.6;
 }
@@ -823,13 +840,13 @@ function draw() {
 
 	if (leftBallFinished && rightBallFinished) resetRound();
 
-	if (xM <= -0.42) 
+	if (xM <= -0.40) 
 	{
 		rightPoints ++;
 		nextRound();
 	}
 
-	if (xM >= +0.42) 
+	if (xM >= +0.40) 
 	{
 		leftPoints ++;
 		nextRound();
@@ -850,6 +867,9 @@ function draw() {
 	text("xL: " + xL.toFixed(2) + " -- yL: " + yL.toFixed(2) + "\nxR: " + xR.toFixed(2) + " -- yR: " + yR.toFixed(2), 800, 150);
 	text("xC0: " + xC0.toFixed(2) + " -- yC0: " + yC0.toFixed(2) + "\nxC: " + xC.toFixed(2) + " -- yC: " + yC.toFixed(2), 800, 225);
 	text("xM0: " + xM0.toFixed(2) + " -- yM0: " + yM0.toFixed(2) + "\nxM: " + xM.toFixed(2) + " -- yM: " + yM.toFixed(2), 800, 300);
+
+	text("Gibt noch kleine Bugs? Woran könnte es liegen? \n\nAngular Velocity plötzlich 'not defined'" 
+	+ "\n\nRechter Ball: Seltsamer Rückroll Effekt \nTritt nur bei höhren Windgeschwindigkeiten auf!", 340, 210);
 	
 	textSize(20);
 	if (customBall) text("P: Pause the Game \nR:  Reset Test Ball \nWASD:  Move Test Ball \nSpace:  Shoot Test Ball", 400, 100);
@@ -1191,7 +1211,7 @@ function leftRolling() {
 	if (vxL > 0) vxL = vxL - myR * gF * dt;
 	else if (vxL < 0) vxL = vxL + myR * gF * dt;
 
-	if (Math.abs(vxL) < 0.01)
+	if (Math.abs(vxL) < 0.05)
 	{
 		vxL = 0;
 		leftBallFinished = true;
@@ -1204,7 +1224,7 @@ function rightRolling() {
 	if (vxR > 0) vxR = vxR - myR * gF * dt;
 	else if (vxR < 0) vxR = vxR + myR * gF * dt;
 
-	if (Math.abs(vxR) < 0.01)
+	if (Math.abs(vxR) < 0.05)
 	{
 		vxR = 0;
 		rightBallFinished = true;
@@ -1217,7 +1237,7 @@ function middleRolling() {
 	if (vxM > 0) vxM = vxM - myM * gF * dt;
 	else if (vxM < 0) vxM = vxM + myM * gF * dt;
 
-	if (Math.abs(vxM) < 0.02) vxM = 0;
+	if (Math.abs(vxM) < 0.05) vxM = 0;
 	xM += vxM * dt;
 }
 
