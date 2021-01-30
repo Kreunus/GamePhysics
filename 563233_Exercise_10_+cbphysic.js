@@ -82,14 +82,13 @@ var ballradius = 0.016;
 var d = 0.032;           // Balldurchmesser
 var mBall = 2.5/1000;      // Ballmasse in kg
 
-var lama = 0.6;
+var lama = 0.4;
 var windspeedms;
 var windspeedkmh;
 var windspeedScale = 0;
 
-var velocityVector;
 var leftCollider, rightCollider; // colliders of seesaws
-var sL = 0.00, sR = 0.00, sC = 0.00;
+var sL = 0.00, sR = 0.00;
 var sL0 = 0.00, sR0 = 0.00; 
 var vDL = 0.00, vDR = 0.00;
 
@@ -97,10 +96,6 @@ var vDL = 0.00, vDR = 0.00;
 var myR = 0.03;
 
 // Status
-var paused = false;
-
-var pulsed = false;
-var moveable = false;
 var customBall = false;
 var customBallLive = false;
 var c_physics = false;
@@ -119,19 +114,25 @@ var leftIsCompressing = false;
 
 var l_flying = false;
 var r_flying = false;
+var c_flying = false;
 
 var l_grounded = false;
 var r_grounded = false;
+var c_grounded = false;
 
 var l_collidedLeft = false;
 var l_collidedRight = false;
 var r_collidedLeft = false;
 var r_collidedRight = false;
+var c_collidedLeft = false;
+var c_collidedRight = false;
 
 var l_rollingFromLeft = false;
 var l_rollingFromRight = false;
 var r_rollingFromLeft = false;
 var r_rollingFromRight = false;
+var c_rollingFromLeft = false;
+var c_rollingFromRight = false;
 
 // End of declaration ------------------------------------------------------------------------------------------------------
 
@@ -156,8 +157,6 @@ function setup()
 
 	tau = mBall/(rho*cw*PI*sq(d/2));
 	
-	velocityVector = createVector(0,0);
-
 	leftCollider = [
 		createVector(-0.6 + lineWidth/2, 0),
 		createVector(-0.6 - lineWidth/2, lineHeight)
@@ -185,15 +184,10 @@ function setup()
 	xi0 = 0.5 * width;
 	yi0 = height;
 
-	button = createButton('Restart App');
-	button.size(120, 35);
-	button.position(830, 50); //because sacling withh get implemented
+	button = createButton('Reset');
+	button.size(60, 35);
+	button.position(1.7*xM, 0.185*yM); //because sacling withh get implemented
 	button.mousePressed(pressedButton);
-
-	testbutton = createButton('Testmode');
-	testbutton.size(120, 35);
-	testbutton.position(830, 90); //because sacling withh get implemented
-	testbutton.mousePressed(pressedTestButton);
 
 	windspeedkmh = randomizeWindSpeed(windspeedScale); //maybe connect with button or generate for eacht throwlater
 	windspeedms = windspeedkmh / 3.6;
@@ -202,21 +196,6 @@ function setup()
 function pressedButton() 
 {
 	window.location.href = window.location.pathname;
-}
-
-function pressedTestButton()
-{
-	if(!customBall) 
-	{
-		customBall = true;
-		return;
-	}
-
-	if(customBall)
-	{
-		customBall = false;
-		return;
-	}
 }
 
 function draw()
@@ -448,7 +427,9 @@ function draw()
 			vyL = angVelocityLeft * Math.cos(angleLoffset);
 		}
 	}
-	if (l_grounded || l_rollingFromLeft || l_rollingFromRight) leftRolling();
+	if (l_grounded || l_rollingFromLeft) leftRolling();
+	if (l_grounded || l_rollingFromRight) leftRolling();
+		
 	
 	// Draw left ball
 	fill('#008800');
@@ -639,7 +620,8 @@ function draw()
 			vyR = angVelocityRight * Math.cos(angleRoffset);
 		}
 	}
-	if(r_grounded || r_rollingFromLeft || r_rollingFromRight) rightRolling();
+	if(r_grounded || r_rollingFromLeft) rightRolling();	
+	if(r_grounded || r_rollingFromRight) rightRolling();
 
 	
 	// Draw right ball
@@ -665,9 +647,7 @@ function draw()
 		strokeWeight(0);
 		
 		circle(xC*xM, yC*yM, 2*ballradius*M);
-
-		velocityVector = createVector(mouseXk - xC*xM, mouseYk - yC*yM);
-		if(!pulsed)drawArrow(createVector(xC*xM, yC*yM), velocityVector, '#fafafa')
+		line(xC*xM, yC*yM, mouseX, mouseY);
 
 		if (customBallLive) customBallPhysics(); // 3.2
 		pop();
@@ -680,7 +660,7 @@ function draw()
 	// Administration
 	fill('#fafafa');
 	textSize(40);
-	if(!customBall) text("Treffer " + "0" + ":" + "0", 400, 100);
+	text("Treffer " + "0" + ":" + "0", 400, 100);
 	
 	textSize(15);
 	text("Time: " + t.toFixed(2) + " s", 40, 75);
@@ -691,9 +671,6 @@ function draw()
 	text("xR0: " + xR0.toFixed(2) +  " -- yR0: " + yR0.toFixed(2) + "\nxR: " + xR.toFixed(2) + " -- yR: " + yR.toFixed(2), 800, 250);
 	text("xC0: " + xC0.toFixed(2) +  " -- yC0: " + yC0.toFixed(2) + "\nxC: " + xC.toFixed(2) + " -- yC: " + yC.toFixed(2), 800, 350);
 	text("Windspeed: " + windspeedkmh.toFixed(2), 40, 340);
-
-	textSize(20);
-	if(customBall) text("P: Pause the Game \nR:  Reset Test Ball \nWASD:  Move Test Ball \nSpace:  Shoot Test Ball", 400, 100);
 }
 
 
@@ -702,39 +679,135 @@ function draw()
 //3.2 Custom Ball Physics
 function customBallPhysics()
 {
-	//3.2.1 Custom Ball
+	//3.2.1 Custom Ball Flying
 	
 	if(!c_physics) {
+		vxC = 0.2;
+		vyC = 2;
 		c_physics = true;
 	}
 
-	if(!pulsed)	
-	{
-		vxC = 2*velocityVector.x /xM;
-		vyC = 2*velocityVector.y /yM;
-		pulsed = true;	
+	c_flying = true;
+
+	if(c_flying && (!c_rollingFromLeft || !c_rollingFromRight)) {
+		var vx_ = vxC;
+		vxC = vxC - ((vxC-windspeedms)*sqrt(sq(vxC-windspeedms)+sq(vyC))/(2*tau))*dt;         // I. Integration
+		vyC = vyC - (vyC*sqrt(sq(vx_-windspeedms)+sq(vyC))/(2*tau) + gF)*dt;
+		xC = xC + vxC*dt; // II. Integration
+		yC = yC + vyC*dt;
+	
+		if (yC < (0 + ballradius))
+		{	
+			yC = ballradius;
+
+			var vyT = vyC * (-1) * lama;
+			if(Math.abs(vyT) < 0.05)
+			{
+				c_flying = false;
+				c_grounded = true;
+			} 
+			
+			else vyC = vyT;
+		}
 	}
 
-	customRolling();
-	console.log("vxC: " + vxC);
-	console.log("vyC: " + vyC);
+	// 3.2.2 Custom Ball Collision ------------------------------------------------------------------------------------
+	if (xC < 0) 
+	{ //COLLISION with left seesaw	
+		if(xC <= leftCollider[0].x && xC >= leftCollider[1].x && yC <= leftCollider[1].y && !c_rollingFromLeft) {
+			if(!c_collidedLeft) c_leftCollisioning();
+			print("COLLISION left");
+					
+			translate((-0.6 + lineWidth/2)*xM, 0);
+			rotate(angleLoffset);
+			translate((+0.6 - lineWidth/2)*xM, 0); // hillPointRight
+			yC = ballradius;
+		
+			dF = gF * sin(-angleLoffset);
+			vxC = vxC + (gF * cos(-angleLoffset) * myR + dF) * dt;
+			sC = sC + vxC * dt;
+			xC = sC;
+		}
+		
+		if(xC >= leftCollider[0].x && c_collidedLeft) {
+			print("COLLISION left over");
+			c_rollingStartTime = t;
+			c_collidedLeft = false;
+			c_rollingFromLeft = true;
+			rotate(-angleLoffset);	
+		
+			xC = leftCollider[0].x;
+		}
+		
+		if(xC <= leftCollider[1].x && c_collidedLeft)
+		{
+			c_flying = true;
+			c_grounded = false;
+			c_collidedLeft = false;
+	
+			rotate(-angleLoffset);
+		
+			xC = xC + ballradius;
+			yC = leftCollider[1].y + ballradius;
+			
+			//HIER! Todo Vektorzeug
+	
+			/*
+			vxC = angVelocityRigth * Math.sin(-angleRoffset) *0.25;
+			vyC = angVelocityRight * Math.cos(angleRoffset);
+			*/
+		}
+	}
+		
+	if (xC > 0) 
+	{ //COLLISION with right seesaw
+		if(xC >= rightCollider[0].x && xC <= rightCollider[1].x && yC <= rightCollider[1].y && !c_rollingFromRight) 
+		{
+			if(!c_collidedRight) r_rightCollisioning();
+			print("COLLISION right");
+									
+			translate((+0.6 - lineWidth/2)*xM, 0);
+			rotate(angleRoffset);
+			translate((-0.6 + lineWidth/2)*xM, 0); // hillPointRight
+			yC = ballradius;
+		
+			dF = gF * sin(-angleRoffset);
+			vxC = vxC + (gF * cos(-angleRoffset) * myR + dF)* dt;
+			sC = sC + vxC * dt;
+			xC = sC;
+		}
+		
+		if(xC <= rightCollider[0].x && c_collidedRight) {
+			print("COLLISION right over");
+			c_rollingStartTime = t;
+			c_collidedRight = false;
+			c_rollingFromRight = true; 
+			rotate(-angleRoffset);	
+	
+			xC = rightCollider[0].x;
+		}
+	
+		if(xC >= rightCollider[1].x && c_collidedRight)
+		{
+			c_flying = true;
+			c_grounded = false;
+			c_collidedRight = false;
+	
+			rotate(-angleRoffset);
+			
+			xC = xC - ballradius;
+			yC = rightCollider[1].y + ballradius;
+	
+
+			vxC = angVelocityRigth * Math.sin(-angleRoffset) *0.25;
+			vyC = angVelocityRight * Math.cos(angleRoffset);
+		}
+	}
+
+	if(c_grounded || c_rollingFromLeft) customRolling();	
+	if(c_grounded || c_rollingFromRight) customRolling();
 }
 
-
-function keyPressed()
-{
-	if(!paused && keyCode == 80) 
-	{
-		noLoop();
-		paused = true;
-	}
-
-	else if(paused && keyCode == 80)
-	{
-		loop();
-		paused = false;
-	}
-}
 
 function startCustomBall(key)
 {
@@ -752,18 +825,6 @@ function moveCustomBall(key)
 {
 	if(!customBall) return;
 	
-	if (key.keyCode == "82") // R
-	{
-		xC = xC0;
-		yC = yC0;
-		
-		vxC = 0;
-		vyC = 0;
-
-		pulsed = false;
-		customBallLive = false;
-	}
-
 	if (key.keyCode == "87") // W
 	{
 		console.log("W");
@@ -795,8 +856,6 @@ function moveCustomBall(key)
 	if (key.keyCode == "32") // Space
 	{
 		console.log("Space");
-		xC0 = xC;
-		yC0 = yC;
 		customBallLive = true;
 	}
 }
@@ -867,9 +926,9 @@ function clampRight(angle)
 	sC = xC;
  }
 
- function leftRolling() {	
+ function leftRolling() {
 	if(vxL > 0) vxL = vxL - myR * gF * dt;
-	else if(vxL < 0) vxL = vxL + myR * gF * dt;
+	else vxL = vxL + myR * gF * dt;
 
 	if(Math.abs(vxL) < 0.01) vxL = 0;
 	xL = xL + vxL * dt;	
@@ -877,9 +936,9 @@ function clampRight(angle)
 	return vxL;
 }
 
-function rightRolling() {	
+function rightRolling() {
 	if(vxR > 0) vxR = vxR - myR * gF * dt;
-	else if (vxR < 0) vxR = vxR + myR * gF * dt;
+	else vxR = vxR + myR * gF * dt;
 
 	if(Math.abs(vxR) < 0.01) vxR = 0;
 	xR = xR + vxR * dt;	
@@ -888,10 +947,11 @@ function rightRolling() {
 }
 
 function customRolling() {
-	if(Math.abs(vxC) < 0.01) vxC = 0;
+	if(vxC > 0) vxC = vxC - myR * gF * dt;
+	else vxC = vxC + myR * gF * dt;
 
+	if(Math.abs(vxC) < 0.01) vxC = 0;
 	xC = xC + vxC * dt;	
-	yC = yC + vyC * dt;	
 
 	return vxC;
 }
@@ -900,17 +960,3 @@ function randomizeWindSpeed(number)
 {
 	return Math.random() * (number + number) - number;
 }
-
-function drawArrow(base, vec, myColor) {
-	push();
-	stroke(myColor);
-	strokeWeight(3);
-	fill(myColor);
-	translate(base.x, base.y);
-	line(0, 0, vec.x, vec.y);
-	rotate(vec.heading());
-	let arrowSize = 7;
-	translate(vec.mag() - arrowSize, 0);
-	triangle(0, arrowSize / 2, 0, -arrowSize / 2, arrowSize, 0);
-	pop();
-  }
